@@ -1,6 +1,3 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
 name: Build and deploy ASP.Net Core app to Azure Web App - UKParliamentEndPointsAIChat
 
 on:
@@ -10,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build_and_deploy:
     runs-on: windows-latest
 
     steps:
@@ -25,32 +22,14 @@ jobs:
         run: dotnet restore UKParliamentEndPointsAIChat.Ui.csproj
 
       - name: Build with dotnet
-        run: dotnet build UKParliamentEndPointsAIChat.Ui.csproj --configuration Release --no-restore
+        run: dotnet build UKParliamentEndPointsAIChat.Ui.csproj --configuration Release
 
-      - name: dotnet publish
-        run: dotnet publish UKParliamentEndPointsAIChat.Ui.csproj --configuration Release --no-build --output ${{ github.workspace }}/publish
+      - name: Publish with dotnet
+        run: dotnet publish UKParliamentEndPointsAIChat.Ui.csproj --configuration Release --output ${{ github.workspace }}/publish
 
-      - name: Upload artifact for deployment job
-        uses: actions/upload-artifact@v4
-        with:
-          name: UKParliamentEndPointsAIChat.Ui.csproj
-          path: UKParliamentEndPointsAIChat.Ui.csproj
+      - name: List publish directory
+        run: dir ${{ github.workspace }}\publish
 
-  deploy:
-    runs-on: windows-latest
-    needs: build
-    environment:
-      name: 'Production'
-      url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
-    permissions:
-      id-token: write #This is required for requesting the JWT
-
-    steps:
-      - name: Download artifact from build job
-        uses: actions/download-artifact@v4
-        with:
-          name: UKParliamentEndPointsAIChat.Ui.csproj
-      
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -59,10 +38,7 @@ jobs:
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_FB76509B6F3C463DB59F64F8AB46048B }}
 
       - name: Deploy to Azure Web App
-        id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'UKParliamentEndPointsAIChat'
-          slot-name: 'Production'
-          package: .
-          
+          package: ${{ github.workspace }}/publish
