@@ -1,0 +1,23 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Talk to UK Parliamentary Endpoints AI</h1>
+    <div id="chat-container" style="margin: 20px;">
+        <form id="chatForm" method="post" action="/Home/SendMessageToAI">
+            <textarea id="userMessage" name="userMessage" rows="6" style="width: 80%;" placeholder="Type your message here..."></textarea>
+            <br /><br />
+            <button type="submit" class="btn btn-primary">Send Message</button>
+        </form>
+    </div>
+
+    <div id="response-container">
+        @if (ViewBag.ResponseMessage != null)
+        {
+            <div class="alert alert-info">
+                <strong>AI Response:</strong> @ViewBag.ResponseMessage
+            </div>
+        }
+    </div>
+</div>
