@@ -3,10 +3,10 @@
 }
 
 <div class="text-center">
-    <h1 class="display-4">Talk to UK Parliamentary Endpoints AI</h1>
+    <h1 class="display-4">UK Parliamentary Data AI</h1>
     <div id="chat-container" style="margin: 20px;">
         <form id="chatForm" method="post" action="/Home/SendMessageToAI">
-            <textarea id="userMessage" name="userMessage" rows="6" style="width: 80%;" placeholder="Type your message here..."></textarea>
+            <textarea id="userMessage" name="userMessage" rows="6" style="width: 80%;" placeholder="Ask questions on UK parliament."></textarea>
             <br /><br />
             <button type="submit" class="btn btn-primary">Send Message</button>
         </form>
@@ -16,8 +16,22 @@
         @if (ViewBag.ResponseMessage != null)
         {
             <div class="alert alert-info">
-                <strong>AI Response:</strong> @ViewBag.ResponseMessage
+                <strong>AI Response:</strong> @Html.Raw(ViewBag.ResponseMessage)
             </div>
         }
     </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var textarea = document.getElementById("userMessage");
+        textarea.focus();
+
+        textarea.addEventListener("keydown", function(event) {
+            if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                document.getElementById("chatForm").submit();
+            }
+        });
+    });
+</script>

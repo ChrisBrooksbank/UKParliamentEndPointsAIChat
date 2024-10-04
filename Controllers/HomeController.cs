@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using Markdig;
 using UKParliamentEndPointsAIChat.Ui.Models;
 
 namespace UKParliamentEndPointsAIChat.Ui.Controllers
@@ -14,6 +15,13 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
         private readonly List<object> _messages = new List<object>();
         private readonly HttpClient _httpClient;
 
+        private const string SYSTEM_PROMPT =
+            "You are a helpful, friendly, very smart AI assistant that helps people find information on UK parliament. " +
+            "You will only find information relevant to UK parliament. " +
+            "Any questions in other fields will yield a response saying you are only for UK Parliament data." +
+            "https://www.parliament.uk/ is the primary source of data and whenever possible you should return a link to this site. " +
+            "Only return a link if its a real link that returns a 200 when a GET request is issued. " +
+            "Its vital you check any links are real links that return 200.  ";
 
         public HomeController(ILogger<HomeController> logger)
         {
@@ -22,21 +30,8 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             _coachAndFocusLLMEndpoint = Environment.GetEnvironmentVariable("CoachAndFocusLLMEndpoint");
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("api-key", _coachAndFocusLLMApiKey);
-        
-
-            var _llm_system_message = new
-            {
-                role = "system",
-                content = new object[]
-                {
-                    new
-                    {
-                        type = "text",
-                        text = "You are an AI assistant that helps people find information."
-                    }
-                }
-            };
-            _messages.Add(_llm_system_message);
+            _messages.Clear();
+            _messages.Add(new {role = "system", content = new object[] {new{type = "text", text = SYSTEM_PROMPT}}});
         }
 
         public IActionResult Index()
@@ -88,6 +83,8 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                         }
                     }
                 });
+             
+                string htmlResponse = Markdown.ToHtml(messageContent);
                 ViewBag.ResponseMessage = messageContent;
             }
 
