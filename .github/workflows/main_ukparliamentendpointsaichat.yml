@@ -21,11 +21,14 @@ jobs:
         with:
           dotnet-version: '8.x'
 
+      - name: Restore dependencies
+        run: dotnet restore UKParliamentEndPointsAIChat.Ui.csproj
+
       - name: Build with dotnet
-        run: dotnet build --configuration Release
+        run: dotnet build UKParliamentEndPointsAIChat.Ui.csproj --configuration Release --no-restore
 
       - name: dotnet publish
-        run: dotnet publish -c Release -o ${{env.DOTNET_ROOT}}/myapp
+        run: dotnet publish UKParliamentEndPointsAIChat.Ui.csproj -c Release -o ${{env.DOTNET_ROOT}}/myapp
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
