@@ -84,8 +84,8 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                     }
                 });
              
-                string htmlResponse = Markdown.ToHtml(messageContent);
-                ViewBag.ResponseMessage = messageContent;
+                var htmlResponse = Markdown.ToHtml(messageContent);
+                ViewBag.ResponseMessage = htmlResponse;
             }
 
             return View("Index");
