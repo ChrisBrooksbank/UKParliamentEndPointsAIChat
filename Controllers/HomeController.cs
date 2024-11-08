@@ -86,10 +86,18 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                         }
                     }
                 });
-
                 HttpContext.Session.SetString("Messages", JsonSerializer.Serialize(_messages));
              
                 var htmlResponse = Markdown.ToHtml(messageContent);
+
+                var htmlDoc = new HtmlAgilityPack.HtmlDocument();
+                htmlDoc.LoadHtml(htmlResponse);
+                foreach (var link in htmlDoc.DocumentNode.SelectNodes("//a[@href]"))
+                {
+                    link.SetAttributeValue("target", "_blank");
+                }
+                htmlResponse = htmlDoc.DocumentNode.OuterHtml;
+
                 ViewBag.ResponseMessage = htmlResponse;
             }
 
