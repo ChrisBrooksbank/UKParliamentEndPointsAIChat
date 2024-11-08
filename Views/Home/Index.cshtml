@@ -1,5 +1,11 @@
 ﻿@{
     ViewData["Title"] = "Home Page";
+
+    string responseClass = "language-json"; // Default to JSON
+    if (ViewBag.ApiResponse != null && ViewBag.ApiResponse.TrimStart().StartsWith("<"))
+    {
+        responseClass = "language-xml";
+    }
 }
 
 <div class="text-center">
@@ -19,6 +25,16 @@
             {
                 <div class="alert alert-info">
                     <strong>AI Response:</strong> @Html.Raw(ViewBag.ResponseMessage)
+                </div>
+            }
+        </div>
+        
+        <div id="api-response-container">
+            @if (ViewBag.ApiResponse != null)
+            {
+                <div class="alert alert-info">
+                    <pre><code id="apiResponseContent" class="@responseClass">@Html.Raw(ViewBag.ApiResponse)</code></pre>
+                    <button id="copyButton" class="btn btn-secondary" onclick="copyToClipboard()">Copy to Clipboard</button>
                 </div>
             }
         </div>
@@ -46,4 +62,13 @@
             }
         });
     });
+
+    function copyToClipboard() {
+        var copyText = document.getElementById("apiResponseContent").innerText;
+        navigator.clipboard.writeText(copyText).then(function () {
+            alert("Copied to clipboard!");
+        }, function (err) {
+            alert("Failed to copy: ", err);
+        });
+    }
 </script>
