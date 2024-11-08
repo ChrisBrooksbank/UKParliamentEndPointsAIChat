@@ -12,7 +12,7 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
         private readonly ILogger<HomeController> _logger;
         private readonly string _coachAndFocusLLMApiKey;
         private readonly string _coachAndFocusLLMEndpoint;
-        private readonly List<object> _messages = new List<object>();
+        private List<object> _messages = new List<object>();
         private readonly HttpClient _httpClient;
 
         private const string SYSTEM_PROMPT =
@@ -42,6 +42,9 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
         [HttpPost]
         public async Task<IActionResult> SendMessageToAI(string userMessage)
         {
+            var messages = HttpContext.Session.GetString("Messages");
+            _messages = string.IsNullOrEmpty(messages) ? GetNewMessagesList() : JsonSerializer.Deserialize<List<object>>(messages);
+
             if (userMessage.ToLower() == "clear")
             {
                 _messages.RemoveRange(1, _messages.Count - 1);
@@ -83,6 +86,8 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                         }
                     }
                 });
+
+                HttpContext.Session.SetString("Messages", JsonSerializer.Serialize(_messages));
              
                 var htmlResponse = Markdown.ToHtml(messageContent);
                 ViewBag.ResponseMessage = htmlResponse;
@@ -95,6 +100,18 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
         public IActionResult Error()
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
+
+        private List<object> GetNewMessagesList()
+        {
+            return new List<object>
+            {
+                new
+                {
+                    role = "system",
+                    content = new object[] {new {type = "text", text = SYSTEM_PROMPT}}
+                }
+            };
         }
     }
 }
