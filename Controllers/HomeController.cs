@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 using System.Text;
-using System.Text.Json;
 using Markdig;
+using Newtonsoft.Json;
 using UKParliamentEndPointsAIChat.Ui.Models;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace UKParliamentEndPointsAIChat.Ui.Controllers
 {
@@ -15,13 +16,19 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
         private List<object> _messages = new List<object>();
         private readonly HttpClient _httpClient;
 
+        private const double AITemperature = 0.7;
+        private const double AITop_p = 0.95;
+        private const int AIMaxTokens = 800;
+        private const bool AIUseStream = false;
+
         private const string SYSTEM_PROMPT =
             "You are a helpful, friendly, very smart AI assistant that helps people find information on UK parliament. " +
             "You will only find information relevant to UK parliament. " +
             "Any questions in other fields will yield a response saying you are only for UK Parliament data." +
             "https://www.parliament.uk/ is the primary source of data and whenever possible you should return a link to this site. " +
             "Only return a link if its a real link that returns a 200 when a GET request is issued. " +
-            "Its vital you check any links are real links that return 200.  ";
+            "Its vital you check any links are real links that return 200.  " + 
+            "You should return any useful API links. You must look at webpage https://developer.parliament.uk/";
 
         public HomeController(ILogger<HomeController> logger)
         {
@@ -42,6 +49,29 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
         [HttpPost]
         public async Task<IActionResult> SendMessageToAI(string userMessage)
         {
+            var generateApiCalls = userMessage.StartsWith("API ", StringComparison.CurrentCultureIgnoreCase);
+            
+            var functions = new[]
+            {
+                new
+                {
+                    name = "search_parliament_member",
+                    description = "Search for UK Parliament members by name",
+                    url = "https://members-api.parliament.uk/api/Members/Search",
+                    parameters = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            name = new { type = "string", description = "The full or partial name of the member" },
+                            skip = new { type = "integer", description = "Number of records to skip", @default = 0 },
+                            take = new { type = "integer", description = "Number of records to take", @default = 20 }
+                        },
+                        required = new[] { "name" }
+                    }
+                }
+            };
+
             var messages = HttpContext.Session.GetString("Messages");
             _messages = string.IsNullOrEmpty(messages) ? GetNewMessagesList() : JsonSerializer.Deserialize<List<object>>(messages);
 
@@ -64,44 +94,109 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             var payload = new
             {
                 messages = _messages,
-                temperature = 0.7,
-                top_p = 0.95,
-                max_tokens = 800,
-                stream = false
+                temperature = AITemperature,
+                top_p = AITop_p,
+                max_tokens = AIMaxTokens,
+                stream = AIUseStream,
+                functions = generateApiCalls ? functions : null,
+                function_call = generateApiCalls ? "auto" : null
             };
 
             var response = await _httpClient.PostAsync(_coachAndFocusLLMEndpoint, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+            response.EnsureSuccessStatusCode();
+            var responseContent = await response.Content.ReadAsStringAsync();
 
-            if (response.IsSuccessStatusCode)
+
+            dynamic jsonResponse = JsonConvert.DeserializeObject(responseContent);
+            var choice = jsonResponse.choices[0];
+            var finishReason = (string)choice.finish_reason;
+            var finishedWithFunctionCall = finishReason == "function_call";
+
+            if (finishedWithFunctionCall)
+            {
+                var functionCall = choice.message.function_call;
+                var functionName = (string)functionCall.name;
+                var arguments = JsonConvert.DeserializeObject<Dictionary<string, object>>((string)functionCall.arguments);
+
+                if (functionName == "search_parliament_member")
+                {
+                    string name = arguments.ContainsKey("name") ? arguments["name"].ToString() : "";
+                    int skip = arguments.ContainsKey("skip") ? Convert.ToInt32(arguments["skip"]) : 0;
+                    int take = arguments.ContainsKey("take") ? Convert.ToInt32(arguments["take"]) : 20;
+
+                    var apiUrl = $"https://members-api.parliament.uk/api/Members/Search?Name={Uri.EscapeDataString(name)}&skip={skip}&take={take}";
+
+                    var memberInfo = await SearchParliamentMemberAsync(name, skip, take);
+
+                    ViewBag.ResponseMessage = $"<p>I created a API call for you <a href='{apiUrl}' target='_none'>{apiUrl}</a><p>";
+                }
+            }
+
+            if (!finishedWithFunctionCall)
             {
                 var responseData = JsonSerializer.Deserialize<GptResponse>(await response.Content.ReadAsStringAsync());
                 var messageContent = responseData.Choices[0].Message.Content;
                 _messages.Add(new
                 {
                     role = "assistant",
-                    content = new object[] {
-                        new {
+                    content = new object[]
+                    {
+                        new
+                        {
                             type = "text",
                             text = messageContent
                         }
                     }
                 });
                 HttpContext.Session.SetString("Messages", JsonSerializer.Serialize(_messages));
-             
+
                 var htmlResponse = Markdown.ToHtml(messageContent);
 
                 var htmlDoc = new HtmlAgilityPack.HtmlDocument();
                 htmlDoc.LoadHtml(htmlResponse);
-                foreach (var link in htmlDoc.DocumentNode.SelectNodes("//a[@href]"))
+                var links = htmlDoc.DocumentNode.SelectNodes("//a[@href]");
+                if (links != null)
                 {
-                    link.SetAttributeValue("target", "_blank");
+                    foreach (var link in links)
+                    {
+                        link.SetAttributeValue("target", "_blank");
+                    }
                 }
+              
                 htmlResponse = htmlDoc.DocumentNode.OuterHtml;
 
                 ViewBag.ResponseMessage = htmlResponse;
             }
 
             return View("Index");
+        }
+
+        private async Task<object> SearchParliamentMemberAsync(string name, int skip, int take)
+        {
+            var url = $"https://members-api.parliament.uk/api/Members/Search?Name={Uri.EscapeDataString(name)}&skip={skip}&take={take}";
+
+            var response = await _httpClient.GetAsync(url);
+            var content = await response.Content.ReadAsStringAsync();
+
+            // Optionally parse and process the response
+            dynamic jsonResponse = JsonConvert.DeserializeObject(content);
+
+            // Extract relevant member information
+            var members = jsonResponse.items;
+            var memberDetails = new List<object>();
+
+            foreach (var member in members)
+            {
+                memberDetails.Add(new
+                {
+                    name = (string)member.value.nameDisplayAs,
+                    party = (string)member.value.latestParty.name,
+                    constituency = (string)member.value.latestHouseMembership.membershipFrom,
+                    memberId = (int)member.value.id
+                });
+            }
+
+            return new { members = memberDetails };
         }
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
