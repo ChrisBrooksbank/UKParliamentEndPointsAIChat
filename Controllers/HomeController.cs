@@ -14,7 +14,8 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
         private readonly string _coachAndFocusLLMApiKey;
         private readonly string _coachAndFocusLLMEndpoint;
         private List<object> _messages = new List<object>();
-        private readonly HttpClient _httpClient;
+        private readonly HttpClient _llmHttpClient;
+        private readonly HttpClient _apihttpClient;
 
         private const double AITemperature = 0.7;
         private const double AITop_p = 0.95;
@@ -35,8 +36,9 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             _logger = logger;
             _coachAndFocusLLMApiKey = Environment.GetEnvironmentVariable("CoachAndFocusLLMApiKey");
             _coachAndFocusLLMEndpoint = Environment.GetEnvironmentVariable("CoachAndFocusLLMEndpoint");
-            _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.Add("api-key", _coachAndFocusLLMApiKey);
+            _llmHttpClient = new HttpClient();
+            _llmHttpClient.DefaultRequestHeaders.Add("api-key", _coachAndFocusLLMApiKey);
+            _apihttpClient = new HttpClient();
             _messages.Clear();
             _messages.Add(new {role = "system", content = new object[] {new{type = "text", text = SYSTEM_PROMPT}}});
         }
@@ -102,7 +104,7 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                 function_call = generateApiCalls ? "auto" : null
             };
 
-            var response = await _httpClient.PostAsync(_coachAndFocusLLMEndpoint, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+            var response = await _llmHttpClient.PostAsync(_coachAndFocusLLMEndpoint, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
             response.EnsureSuccessStatusCode();
             var responseContent = await response.Content.ReadAsStringAsync();
 
@@ -126,9 +128,22 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
 
                     var apiUrl = $"https://members-api.parliament.uk/api/Members/Search?Name={Uri.EscapeDataString(name)}&skip={skip}&take={take}";
 
-                    var memberInfo = await SearchParliamentMemberAsync(name, skip, take);
+                    var urlMessage = $"<p>I created a API call for you <a href='{apiUrl}' target='_none'>{apiUrl}</a><p>";
+                    
+                    ViewBag.ResponseMessage = urlMessage;
 
-                    ViewBag.ResponseMessage = $"<p>I created a API call for you <a href='{apiUrl}' target='_none'>{apiUrl}</a><p>";
+                    var apiResponse = await _apihttpClient.GetAsync(apiUrl);
+                    if (apiResponse.IsSuccessStatusCode)
+                    {
+                        var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
+                        ViewBag.ApiResponse = apiResponseContent;
+                    }
+                    else
+                    {
+                        ViewBag.ResponseMessage += "<p>API call failed</p>";
+                    }
+
+                    
                 }
             }
 
@@ -170,35 +185,7 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
 
             return View("Index");
         }
-
-        private async Task<object> SearchParliamentMemberAsync(string name, int skip, int take)
-        {
-            var url = $"https://members-api.parliament.uk/api/Members/Search?Name={Uri.EscapeDataString(name)}&skip={skip}&take={take}";
-
-            var response = await _httpClient.GetAsync(url);
-            var content = await response.Content.ReadAsStringAsync();
-
-            // Optionally parse and process the response
-            dynamic jsonResponse = JsonConvert.DeserializeObject(content);
-
-            // Extract relevant member information
-            var members = jsonResponse.items;
-            var memberDetails = new List<object>();
-
-            foreach (var member in members)
-            {
-                memberDetails.Add(new
-                {
-                    name = (string)member.value.nameDisplayAs,
-                    party = (string)member.value.latestParty.name,
-                    constituency = (string)member.value.latestHouseMembership.membershipFrom,
-                    memberId = (int)member.value.id
-                });
-            }
-
-            return new { members = memberDetails };
-        }
-
+        
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
