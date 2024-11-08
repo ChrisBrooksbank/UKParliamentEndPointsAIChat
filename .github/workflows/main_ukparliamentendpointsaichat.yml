@@ -22,10 +22,10 @@ jobs:
           dotnet-version: '8.x'
 
       - name: Build with dotnet
-        run: dotnet build UKParliamentEndPointsAIChat.Ui.csproj --configuration Release
+        run: dotnet build --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish UKParliamentEndPointsAIChat.Ui.csproj -c Release -o "${{env.DOTNET_ROOT}}/myapp"
+        run: dotnet publish -c Release -o "${{env.DOTNET_ROOT}}/myapp"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -51,9 +51,9 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_081BD7C28CA747B49D383F42E36FF566 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_857CA60757104679AF1CC697B677FC5F }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_A9EBE27A19F74A64B8144174F7DC6D80 }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_30A5E55AB3EB4F66AAC27DA62DFBADF9 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_2C9847F6474F4EC0A758294A261BE91C }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_6A4CEDC850174EBB841F125C340437AD }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
