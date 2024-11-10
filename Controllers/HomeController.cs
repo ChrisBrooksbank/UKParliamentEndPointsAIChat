@@ -55,21 +55,34 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             
             var functions = new[]
             {
-                new
+                new FunctionDefinition
                 {
-                    name = "search_parliament_member",
-                    description = "Search for UK Parliament members by name",
-                    url = "https://members-api.parliament.uk/api/Members/Search",
-                    parameters = new
+                    Name = "search_parliament_member",
+                    Description = "Search for UK Parliament members by name",
+                    Parameters = new
                     {
                         type = "object",
                         properties = new
                         {
                             name = new { type = "string", description = "The full or partial name of the member" },
-                            skip = new { type = "integer", description = "Number of records to skip", @default = 0 },
-                            take = new { type = "integer", description = "Number of records to take", @default = 20 }
+                            skip = new { type = "integer", description = "Number of records to skip" },
+                            take = new { type = "integer", description = "Number of records to take" }
                         },
                         required = new[] { "name" }
+                    }
+                },
+                new FunctionDefinition
+                {
+                    Name = "get_member_by_id",
+                    Description = "Get UK Parliament member by id",
+                    Parameters = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            id = new { type = "string", description = "The id of the member" }
+                        },
+                        required = new[] { "id" }
                     }
                 }
             };
@@ -144,6 +157,27 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                     }
 
                     
+                }
+
+                if (functionName == "get_member_by_id")
+                {
+                    int id = arguments.ContainsKey("id") ? Convert.ToInt32(arguments["id"]) : 0;
+                    var apiUrl = $"https://members-api.parliament.uk/api/Members/{id}";
+
+                    var urlMessage = $"<p>I created a API call for you <a href='{apiUrl}' target='_none'>{apiUrl}</a><p>";
+                    
+                    ViewBag.ResponseMessage = urlMessage;
+
+                    var apiResponse = await _apihttpClient.GetAsync(apiUrl);
+                    if (apiResponse.IsSuccessStatusCode)
+                    {
+                        var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
+                        ViewBag.ApiResponse = apiResponseContent;
+                    }
+                    else
+                    {
+                        ViewBag.ResponseMessage += "<p>API call failed</p>";
+                    }
                 }
             }
 
