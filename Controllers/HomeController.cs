@@ -51,8 +51,6 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
         [HttpPost]
         public async Task<IActionResult> SendMessageToAI(string userMessage)
         {
-            var generateApiCalls = userMessage.StartsWith("API ", StringComparison.CurrentCultureIgnoreCase);
-            
             var functions = new[]
             {
                 new FunctionDefinition
@@ -84,6 +82,20 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                         },
                         required = new[] { "id" }
                     }
+                },
+                new FunctionDefinition()
+                {
+                    Name = "search_treaties",
+                    Description = "Search UK parliament treaties",
+                    Parameters = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            SearchText = new { type = "string", description = "Search Text" }
+                        },
+                        required = new[] { "SearchText" }
+                    }
                 }
             };
 
@@ -113,8 +125,8 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                 top_p = AITop_p,
                 max_tokens = AIMaxTokens,
                 stream = AIUseStream,
-                functions = generateApiCalls ? functions : null,
-                function_call = generateApiCalls ? "auto" : null
+                functions = functions,
+                function_call = "auto"
             };
 
             var response = await _llmHttpClient.PostAsync(_coachAndFocusLLMEndpoint, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
@@ -150,13 +162,12 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                     {
                         var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
                         ViewBag.ApiResponse = apiResponseContent;
+                        await AddApiResponseSummary(apiResponseContent);
                     }
                     else
                     {
                         ViewBag.ResponseMessage += "<p>API call failed</p>";
                     }
-
-                    
                 }
 
                 if (functionName == "get_member_by_id")
@@ -173,6 +184,29 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                     {
                         var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
                         ViewBag.ApiResponse = apiResponseContent;
+                        await AddApiResponseSummary(apiResponseContent);
+                    }
+                    else
+                    {
+                        ViewBag.ResponseMessage += "<p>API call failed</p>";
+                    }
+                }
+
+                if (functionName == "search_treaties")
+                {
+                    string searchText = arguments.ContainsKey("SearchText") ? arguments["SearchText"].ToString() : String.Empty;
+                    var apiUrl = $"https://treaties-api.parliament.uk/api/Treaty?SearchText={searchText}";
+
+                    var urlMessage = $"<p>I created a API call for you <a href='{apiUrl}' target='_none'>{apiUrl}</a><p>";
+                    
+                    ViewBag.ResponseMessage = urlMessage;
+
+                    var apiResponse = await _apihttpClient.GetAsync(apiUrl);
+                    if (apiResponse.IsSuccessStatusCode)
+                    {
+                        var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
+                        ViewBag.ApiResponse = apiResponseContent;
+                        await AddApiResponseSummary(apiResponseContent);
                     }
                     else
                     {
@@ -219,7 +253,56 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
 
             return View("Index");
         }
-        
+
+        private async Task AddApiResponseSummary(string apiResponseContent)
+        {
+            var summaryMessages = GetNewMessagesList();
+            summaryMessages.Add(new
+            {
+                role = "user",
+                content = new object[]
+                {
+                    new
+                    {
+                        type = "text",
+                        text = $"Briefly summarise, making it easy to read with links and images. {apiResponseContent}. List all ids at end of summary"
+                    }
+                }
+            });
+            var summaryPayload = new
+            {
+                messages = summaryMessages,
+                temperature = AITemperature,
+                top_p = AITop_p,
+                max_tokens = AIMaxTokens,
+                stream = AIUseStream
+            };
+            var apiResponseSummary = await _llmHttpClient.PostAsync(_coachAndFocusLLMEndpoint,
+                new StringContent(JsonSerializer.Serialize(summaryPayload), Encoding.UTF8, "application/json"));
+            if (apiResponseSummary.IsSuccessStatusCode)
+            {
+                var summaryResponseData =
+                    JsonSerializer.Deserialize<GptResponse>(await apiResponseSummary.Content.ReadAsStringAsync());
+                var summaryMessageContent = summaryResponseData.Choices[0].Message.Content;
+
+                var htmlResponse = Markdown.ToHtml(summaryMessageContent);
+
+                var htmlDoc = new HtmlAgilityPack.HtmlDocument();
+                htmlDoc.LoadHtml(htmlResponse);
+                var links = htmlDoc.DocumentNode.SelectNodes("//a[@href]");
+                if (links != null)
+                {
+                    foreach (var link in links)
+                    {
+                        link.SetAttributeValue("target", "_blank");
+                    }
+                }
+
+                htmlResponse = htmlDoc.DocumentNode.OuterHtml;
+                ViewBag.ApiResponseSummary = htmlResponse;
+            }
+        }
+
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
         {
