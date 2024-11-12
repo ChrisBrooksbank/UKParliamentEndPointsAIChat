@@ -19,7 +19,7 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
 
         private const double AITemperature = 0.7;
         private const double AITop_p = 0.95;
-        private const int AIMaxTokens = 800;
+        private const int AIMaxTokens = 4000;
         private const bool AIUseStream = false;
 
         private const string SYSTEM_PROMPT =
@@ -95,6 +95,20 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                             SearchText = new { type = "string", description = "Search Text" }
                         },
                         required = new[] { "SearchText" }
+                    }
+                },
+                new FunctionDefinition()
+                {
+                    Name = "search_roi",
+                    Description = "Search registered interests (ROI)",
+                    Parameters = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            MemberId = new { type = "integer", description = "Member Id" }
+                        },
+                        required = new[] { "MemberId" }
                     }
                 }
             };
@@ -213,6 +227,29 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                         ViewBag.ResponseMessage += "<p>API call failed</p>";
                     }
                 }
+
+                if (functionName == "search_roi")
+                {
+                    int memberId = arguments.ContainsKey("MemberId") ? Convert.ToInt32(arguments["MemberId"]) : 0;
+                    var apiUrl = $"https://interests-api.parliament.uk/api/v1/Interests/?MemberId={memberId}";
+
+                    var urlMessage = $"<p>I created a API call for you <a href='{apiUrl}' target='_none'>{apiUrl}</a><p>";
+                    
+                    ViewBag.ResponseMessage = urlMessage;
+
+                    var apiResponse = await _apihttpClient.GetAsync(apiUrl);
+                    if (apiResponse.IsSuccessStatusCode)
+                    {
+                        var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
+                        ViewBag.ApiResponse = apiResponseContent;
+                        await AddApiResponseSummary(apiResponseContent);
+                    }
+                    else
+                    {
+                        ViewBag.ResponseMessage += "<p>API call failed</p>";
+                    }
+                }
+
             }
 
             if (!finishedWithFunctionCall)
@@ -256,8 +293,7 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
 
         private async Task AddApiResponseSummary(string apiResponseContent)
         {
-            var summaryMessages = GetNewMessagesList();
-            summaryMessages.Add(new
+            var newMessage = new
             {
                 role = "user",
                 content = new object[]
@@ -265,10 +301,15 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                     new
                     {
                         type = "text",
-                        text = $"Briefly summarise, making it easy to read with links and images. {apiResponseContent}. List all ids at end of summary"
+                        text =
+                            $"Briefly summarise, making it easy to read with links and images. {apiResponseContent}. List all ids at end of summary"
                     }
                 }
-            });
+            };
+            var summaryMessages = GetNewMessagesList();
+            summaryMessages.Add(newMessage);
+            _messages.Add(newMessage);
+            HttpContext.Session.SetString("Messages", JsonSerializer.Serialize(_messages));
             var summaryPayload = new
             {
                 messages = summaryMessages,
@@ -320,5 +361,7 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                 }
             };
         }
+
+        
     }
 }
