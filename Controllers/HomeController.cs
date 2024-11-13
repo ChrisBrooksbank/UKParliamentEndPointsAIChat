@@ -31,6 +31,9 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             "Its vital you check any links are real links that return 200.  " + 
             "You should return any useful API links. You must look at webpage https://developer.parliament.uk/";
 
+        // saves LLM tokens
+        private const bool ConfigContinuingConversation = false; 
+
         public HomeController(ILogger<HomeController> logger)
         {
             _logger = logger;
@@ -110,13 +113,35 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                         },
                         required = new[] { "MemberId" }
                     }
+                },
+                new FunctionDefinition()
+                {
+                    Name = "search_erskine_may",
+                    Description = "Search erskine may",
+                    Parameters = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            searchTerm = new { type = "string", description = "search term" }
+                        },
+                        required = new[] { "searchTerm" }
+                    }
                 }
             };
 
-            var messages = HttpContext.Session.GetString("Messages");
-            _messages = string.IsNullOrEmpty(messages) ? GetNewMessagesList() : JsonSerializer.Deserialize<List<object>>(messages);
+            if (ConfigContinuingConversation)
+            {
+                var messages = HttpContext.Session.GetString("Messages");
+                _messages = string.IsNullOrEmpty(messages) ? GetNewMessagesList() : JsonSerializer.Deserialize<List<object>>(messages);
+            }
+            else
+            {
+                _messages = GetNewMessagesList();
+            }
+         
 
-            if (userMessage.ToLower() == "clear")
+            if (ConfigContinuingConversation && userMessage.ToLower() == "clear")
             {
                 _messages.RemoveRange(1, _messages.Count - 1);
                 HttpContext.Session.SetString("Messages", JsonSerializer.Serialize(_messages));
@@ -132,7 +157,10 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                     }
                 }
             });
-            HttpContext.Session.SetString("Messages", JsonSerializer.Serialize(_messages));
+            if (ConfigContinuingConversation)
+            {
+                HttpContext.Session.SetString("Messages", JsonSerializer.Serialize(_messages));
+            }
 
             var payload = new
             {
@@ -247,6 +275,27 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                         ViewBag.ResponseMessage += "<p>API call failed</p>";
                     }
                 }
+
+                if (functionName == "search_erskine_may")
+                {
+                    string searchTerm = arguments.ContainsKey("searchTerm") ? arguments["searchTerm"].ToString() : String.Empty;
+                    var apiUrl = $"https://erskinemay-api.parliament.uk/api/Search/ParagraphSearchResults/{searchTerm}";
+
+                    var urlMessage = $"<p>I created a API call for you <a href='{apiUrl}' target='_none'>{apiUrl}</a><p>";
+                    
+                    ViewBag.ResponseMessage = urlMessage;
+
+                    var apiResponse = await _apihttpClient.GetAsync(apiUrl);
+                    if (apiResponse.IsSuccessStatusCode)
+                    {
+                        var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
+                        ViewBag.ApiResponse = apiResponseContent;
+                    }
+                    else
+                    {
+                        ViewBag.ResponseMessage += "<p>API call failed</p>";
+                    }
+                }
             }
 
             if (!finishedWithFunctionCall)
@@ -265,8 +314,10 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                         }
                     }
                 });
-                HttpContext.Session.SetString("Messages", JsonSerializer.Serialize(_messages));
-
+                if (ConfigContinuingConversation)
+                {
+                    HttpContext.Session.SetString("Messages", JsonSerializer.Serialize(_messages));
+                }
                 var htmlResponse = Markdown.ToHtml(messageContent);
 
                 var htmlDoc = new HtmlAgilityPack.HtmlDocument();
