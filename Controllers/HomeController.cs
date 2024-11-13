@@ -119,6 +119,7 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             if (userMessage.ToLower() == "clear")
             {
                 _messages.RemoveRange(1, _messages.Count - 1);
+                HttpContext.Session.SetString("Messages", JsonSerializer.Serialize(_messages));
             }
 
             _messages.Add(new
@@ -131,6 +132,7 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                     }
                 }
             });
+            HttpContext.Session.SetString("Messages", JsonSerializer.Serialize(_messages));
 
             var payload = new
             {
@@ -176,7 +178,6 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                     {
                         var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
                         ViewBag.ApiResponse = apiResponseContent;
-                        await AddApiResponseSummary(apiResponseContent);
                     }
                     else
                     {
@@ -198,7 +199,6 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                     {
                         var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
                         ViewBag.ApiResponse = apiResponseContent;
-                        await AddApiResponseSummary(apiResponseContent);
                     }
                     else
                     {
@@ -220,7 +220,6 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                     {
                         var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
                         ViewBag.ApiResponse = apiResponseContent;
-                        await AddApiResponseSummary(apiResponseContent);
                     }
                     else
                     {
@@ -242,14 +241,12 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                     {
                         var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
                         ViewBag.ApiResponse = apiResponseContent;
-                        await AddApiResponseSummary(apiResponseContent);
                     }
                     else
                     {
                         ViewBag.ResponseMessage += "<p>API call failed</p>";
                     }
                 }
-
             }
 
             if (!finishedWithFunctionCall)
@@ -289,59 +286,6 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             }
 
             return View("Index");
-        }
-
-        private async Task AddApiResponseSummary(string apiResponseContent)
-        {
-            var newMessage = new
-            {
-                role = "user",
-                content = new object[]
-                {
-                    new
-                    {
-                        type = "text",
-                        text =
-                            $"Briefly summarise, making it easy to read with links and images. {apiResponseContent}. List all ids at end of summary"
-                    }
-                }
-            };
-            var summaryMessages = GetNewMessagesList();
-            summaryMessages.Add(newMessage);
-            _messages.Add(newMessage);
-            HttpContext.Session.SetString("Messages", JsonSerializer.Serialize(_messages));
-            var summaryPayload = new
-            {
-                messages = summaryMessages,
-                temperature = AITemperature,
-                top_p = AITop_p,
-                max_tokens = AIMaxTokens,
-                stream = AIUseStream
-            };
-            var apiResponseSummary = await _llmHttpClient.PostAsync(_coachAndFocusLLMEndpoint,
-                new StringContent(JsonSerializer.Serialize(summaryPayload), Encoding.UTF8, "application/json"));
-            if (apiResponseSummary.IsSuccessStatusCode)
-            {
-                var summaryResponseData =
-                    JsonSerializer.Deserialize<GptResponse>(await apiResponseSummary.Content.ReadAsStringAsync());
-                var summaryMessageContent = summaryResponseData.Choices[0].Message.Content;
-
-                var htmlResponse = Markdown.ToHtml(summaryMessageContent);
-
-                var htmlDoc = new HtmlAgilityPack.HtmlDocument();
-                htmlDoc.LoadHtml(htmlResponse);
-                var links = htmlDoc.DocumentNode.SelectNodes("//a[@href]");
-                if (links != null)
-                {
-                    foreach (var link in links)
-                    {
-                        link.SetAttributeValue("target", "_blank");
-                    }
-                }
-
-                htmlResponse = htmlDoc.DocumentNode.OuterHtml;
-                ViewBag.ApiResponseSummary = htmlResponse;
-            }
         }
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

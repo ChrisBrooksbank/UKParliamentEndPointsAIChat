@@ -37,12 +37,6 @@
                     <pre><code id="apiResponseContent" class="@responseClass">@Html.Raw(ViewBag.ApiResponse)</code></pre>
                     <button id="copyButton" class="btn btn-secondary" onclick="copyToClipboard()">Copy to Clipboard</button>
                 </div>
-                @if (ViewBag.ApiResponseSummary != null)
-                {
-                    <div class="alert alert-info">
-                        @Html.Raw(ViewBag.ApiResponseSummary)
-                    </div>
-                }
             }
         </div>
 
