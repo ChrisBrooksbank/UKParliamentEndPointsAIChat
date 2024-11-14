@@ -32,7 +32,8 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             "You should return any useful API links. You must look at webpage https://developer.parliament.uk/";
 
         // saves LLM tokens
-        private const bool ConfigContinuingConversation = false; 
+        private const bool ConfigContinuingConversation = false;
+        private const bool ConfigUseFunctions = true;
 
         public HomeController(ILogger<HomeController> logger)
         {
@@ -127,6 +128,34 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                         },
                         required = new[] { "searchTerm" }
                     }
+                },
+                new FunctionDefinition()
+                {
+                    Name = "search_commons_divisions",
+                    Description = "Search commons divisions",
+                    Parameters = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            searchTerm = new { type = "string", description = "search term" }
+                        },
+                        required = new[] { "searchTerm" }
+                    }
+                },
+                new FunctionDefinition()
+                {
+                    Name = "search_lords_divisions",
+                    Description = "Search commons divisions",
+                    Parameters = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            searchTerm = new { type = "string", description = "search term" }
+                        },
+                        required = new[] { "searchTerm" }
+                    }
                 }
             };
 
@@ -169,8 +198,8 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                 top_p = AITop_p,
                 max_tokens = AIMaxTokens,
                 stream = AIUseStream,
-                functions = functions,
-                function_call = "auto"
+                functions = ConfigUseFunctions ? functions : null,
+                function_call = ConfigUseFunctions ? "auto" : null
             };
 
             var response = await _llmHttpClient.PostAsync(_coachAndFocusLLMEndpoint, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
@@ -194,108 +223,52 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                     string name = arguments.ContainsKey("name") ? arguments["name"].ToString() : "";
                     int skip = arguments.ContainsKey("skip") ? Convert.ToInt32(arguments["skip"]) : 0;
                     int take = arguments.ContainsKey("take") ? Convert.ToInt32(arguments["take"]) : 20;
-
                     var apiUrl = $"https://members-api.parliament.uk/api/Members/Search?Name={Uri.EscapeDataString(name)}&skip={skip}&take={take}";
-
-                    var urlMessage = $"<p>I created a API call for you <a href='{apiUrl}' target='_none'>{apiUrl}</a><p>";
-                    
-                    ViewBag.ResponseMessage = urlMessage;
-
-                    var apiResponse = await _apihttpClient.GetAsync(apiUrl);
-                    if (apiResponse.IsSuccessStatusCode)
-                    {
-                        var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
-                        ViewBag.ApiResponse = apiResponseContent;
-                    }
-                    else
-                    {
-                        ViewBag.ResponseMessage += "<p>API call failed</p>";
-                    }
+                    await CallApi(apiUrl);
                 }
 
                 if (functionName == "get_member_by_id")
                 {
                     int id = arguments.ContainsKey("id") ? Convert.ToInt32(arguments["id"]) : 0;
                     var apiUrl = $"https://members-api.parliament.uk/api/Members/{id}";
-
-                    var urlMessage = $"<p>I created a API call for you <a href='{apiUrl}' target='_none'>{apiUrl}</a><p>";
-                    
-                    ViewBag.ResponseMessage = urlMessage;
-
-                    var apiResponse = await _apihttpClient.GetAsync(apiUrl);
-                    if (apiResponse.IsSuccessStatusCode)
-                    {
-                        var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
-                        ViewBag.ApiResponse = apiResponseContent;
-                    }
-                    else
-                    {
-                        ViewBag.ResponseMessage += "<p>API call failed</p>";
-                    }
+                    await CallApi(apiUrl);
                 }
 
                 if (functionName == "search_treaties")
                 {
                     string searchText = arguments.ContainsKey("SearchText") ? arguments["SearchText"].ToString() : String.Empty;
                     var apiUrl = $"https://treaties-api.parliament.uk/api/Treaty?SearchText={searchText}";
-
-                    var urlMessage = $"<p>I created a API call for you <a href='{apiUrl}' target='_none'>{apiUrl}</a><p>";
-                    
-                    ViewBag.ResponseMessage = urlMessage;
-
-                    var apiResponse = await _apihttpClient.GetAsync(apiUrl);
-                    if (apiResponse.IsSuccessStatusCode)
-                    {
-                        var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
-                        ViewBag.ApiResponse = apiResponseContent;
-                    }
-                    else
-                    {
-                        ViewBag.ResponseMessage += "<p>API call failed</p>";
-                    }
+                    await CallApi(apiUrl);
                 }
 
                 if (functionName == "search_roi")
                 {
                     int memberId = arguments.ContainsKey("MemberId") ? Convert.ToInt32(arguments["MemberId"]) : 0;
                     var apiUrl = $"https://interests-api.parliament.uk/api/v1/Interests/?MemberId={memberId}";
-
-                    var urlMessage = $"<p>I created a API call for you <a href='{apiUrl}' target='_none'>{apiUrl}</a><p>";
-                    
-                    ViewBag.ResponseMessage = urlMessage;
-
-                    var apiResponse = await _apihttpClient.GetAsync(apiUrl);
-                    if (apiResponse.IsSuccessStatusCode)
-                    {
-                        var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
-                        ViewBag.ApiResponse = apiResponseContent;
-                    }
-                    else
-                    {
-                        ViewBag.ResponseMessage += "<p>API call failed</p>";
-                    }
+                    await CallApi(apiUrl);
                 }
 
                 if (functionName == "search_erskine_may")
                 {
                     string searchTerm = arguments.ContainsKey("searchTerm") ? arguments["searchTerm"].ToString() : String.Empty;
                     var apiUrl = $"https://erskinemay-api.parliament.uk/api/Search/ParagraphSearchResults/{searchTerm}";
-
-                    var urlMessage = $"<p>I created a API call for you <a href='{apiUrl}' target='_none'>{apiUrl}</a><p>";
-                    
-                    ViewBag.ResponseMessage = urlMessage;
-
-                    var apiResponse = await _apihttpClient.GetAsync(apiUrl);
-                    if (apiResponse.IsSuccessStatusCode)
-                    {
-                        var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
-                        ViewBag.ApiResponse = apiResponseContent;
-                    }
-                    else
-                    {
-                        ViewBag.ResponseMessage += "<p>API call failed</p>";
-                    }
+                    await CallApi(apiUrl);
                 }
+
+                if (functionName == "search_commons_divisions")
+                {
+                    string searchTerm = arguments.ContainsKey("searchTerm") ? arguments["searchTerm"].ToString() : String.Empty;
+                    var apiUrl = $"http://commonsvotes-api.parliament.uk/data/divisions.json/search?queryParameters.searchTerm={searchTerm}";
+                    await CallApi(apiUrl);
+                }
+
+                if (functionName == "search_lords_divisions")
+                {
+                    string searchTerm = arguments.ContainsKey("searchTerm") ? arguments["searchTerm"].ToString() : String.Empty;
+                    var apiUrl = $"http://lordsvotes-api.parliament.uk/data/divisions.json/search?queryParameters.searchTerm={searchTerm}";
+                    await CallApi(apiUrl);
+                }
+
             }
 
             if (!finishedWithFunctionCall)
@@ -337,6 +310,24 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             }
 
             return View("Index");
+        }
+
+        private async Task CallApi(string apiUrl)
+        {
+            var urlMessage = $"<p>I created a API call for you <a href='{apiUrl}' target='_none'>{apiUrl}</a><p>";
+                    
+            ViewBag.ResponseMessage = urlMessage;
+
+            var apiResponse = await _apihttpClient.GetAsync(apiUrl);
+            if (apiResponse.IsSuccessStatusCode)
+            {
+                var apiResponseContent = await apiResponse.Content.ReadAsStringAsync();
+                ViewBag.ApiResponse = apiResponseContent;
+            }
+            else
+            {
+                ViewBag.ResponseMessage += "<p>API call failed</p>";
+            }
         }
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
