@@ -138,6 +138,21 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                         type = "object",
                         properties = new
                         {
+                            searchTerm = new { type = "string", description = "search term" },
+                            startDate = new { type = "string", description = "start date" },
+                            endDate = new { type = "string", description = "end date" }
+                        }
+                    }
+                },
+                new FunctionDefinition()
+                {
+                    Name = "search_lords_divisions",
+                    Description = "Search commons divisions",
+                    Parameters = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
                             searchTerm = new { type = "string", description = "search term" }
                         },
                         required = new[] { "searchTerm" }
@@ -145,8 +160,8 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                 },
                 new FunctionDefinition()
                 {
-                    Name = "search_lords_divisions",
-                    Description = "Search commons divisions",
+                    Name = "search_bills",
+                    Description = "Search bills",
                     Parameters = new
                     {
                         type = "object",
@@ -220,52 +235,59 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
 
                 if (functionName == "search_parliament_member")
                 {
-                    string name = arguments.ContainsKey("name") ? arguments["name"].ToString() : "";
-                    int skip = arguments.ContainsKey("skip") ? Convert.ToInt32(arguments["skip"]) : 0;
-                    int take = arguments.ContainsKey("take") ? Convert.ToInt32(arguments["take"]) : 20;
+                    var name =  GetParameter<string>(arguments, "name");
+                    var skip = GetParameter<int>(arguments, "skip");
+                    var take = GetParameter<int>(arguments, "take", 20);;
                     var apiUrl = $"https://members-api.parliament.uk/api/Members/Search?Name={Uri.EscapeDataString(name)}&skip={skip}&take={take}";
                     await CallApi(apiUrl);
                 }
 
                 if (functionName == "get_member_by_id")
                 {
-                    int id = arguments.ContainsKey("id") ? Convert.ToInt32(arguments["id"]) : 0;
+                    var id = GetParameter<int>(arguments, "Id");
                     var apiUrl = $"https://members-api.parliament.uk/api/Members/{id}";
                     await CallApi(apiUrl);
                 }
 
                 if (functionName == "search_treaties")
                 {
-                    string searchText = arguments.ContainsKey("SearchText") ? arguments["SearchText"].ToString() : String.Empty;
+                    var searchText = GetParameter<string>(arguments, "SearchText");
                     var apiUrl = $"https://treaties-api.parliament.uk/api/Treaty?SearchText={searchText}";
                     await CallApi(apiUrl);
                 }
 
                 if (functionName == "search_roi")
                 {
-                    int memberId = arguments.ContainsKey("MemberId") ? Convert.ToInt32(arguments["MemberId"]) : 0;
+                    var memberId = GetParameter<int>(arguments, "MemberId");
                     var apiUrl = $"https://interests-api.parliament.uk/api/v1/Interests/?MemberId={memberId}";
                     await CallApi(apiUrl);
                 }
 
                 if (functionName == "search_erskine_may")
                 {
-                    string searchTerm = arguments.ContainsKey("searchTerm") ? arguments["searchTerm"].ToString() : String.Empty;
+                    var searchTerm = GetParameter<string>(arguments, "searchTerm");
                     var apiUrl = $"https://erskinemay-api.parliament.uk/api/Search/ParagraphSearchResults/{searchTerm}";
                     await CallApi(apiUrl);
                 }
 
                 if (functionName == "search_commons_divisions")
                 {
-                    string searchTerm = arguments.ContainsKey("searchTerm") ? arguments["searchTerm"].ToString() : String.Empty;
+                    var searchTerm = GetParameter<string>(arguments, "searchTerm");
                     var apiUrl = $"http://commonsvotes-api.parliament.uk/data/divisions.json/search?queryParameters.searchTerm={searchTerm}";
                     await CallApi(apiUrl);
                 }
 
                 if (functionName == "search_lords_divisions")
                 {
-                    string searchTerm = arguments.ContainsKey("searchTerm") ? arguments["searchTerm"].ToString() : String.Empty;
+                    var searchTerm = GetParameter<string>(arguments, "searchTerm");
                     var apiUrl = $"http://lordsvotes-api.parliament.uk/data/divisions.json/search?queryParameters.searchTerm={searchTerm}";
+                    await CallApi(apiUrl);
+                }
+
+                if (functionName == "search_bills")
+                {
+                    var searchTerm = GetParameter<string>(arguments, "searchTerm");
+                    var apiUrl = $"https://bills-api.parliament.uk/api/v1/Bills?SearchTerm={searchTerm}";
                     await CallApi(apiUrl);
                 }
 
@@ -310,6 +332,16 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             }
 
             return View("Index");
+        }
+        
+        private T GetParameter<T>(Dictionary<string, object> arguments, string key, T defaultValue = default(T))
+        {
+            if (arguments.ContainsKey(key))
+            {
+                return (T)Convert.ChangeType(arguments[key], typeof(T));
+            }
+
+            return defaultValue;
         }
 
         private async Task CallApi(string apiUrl)
