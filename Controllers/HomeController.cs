@@ -36,10 +36,9 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
         private const bool ConfigContinuingConversation = false;
         private const bool ConfigUseFunctions = true;
 
-        public HomeController(ILogger<HomeController> logger, IFunctionDefinitionBuilder functionDefinitionBuilder)
+        public HomeController(ILogger<HomeController> logger)
         {
             _logger = logger;
-            _functionDefinitionBuilder = functionDefinitionBuilder;
             _coachAndFocusLLMApiKey = Environment.GetEnvironmentVariable("CoachAndFocusLLMApiKey");
             _coachAndFocusLLMEndpoint = Environment.GetEnvironmentVariable("CoachAndFocusLLMEndpoint");
             _llmHttpClient = new HttpClient();
