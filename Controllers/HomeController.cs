@@ -11,6 +11,7 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
+        private readonly IFunctionDefinitionBuilder _functionDefinitionBuilder;
         private readonly string _coachAndFocusLLMApiKey;
         private readonly string _coachAndFocusLLMEndpoint;
         private List<object> _messages = new List<object>();
@@ -35,9 +36,10 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
         private const bool ConfigContinuingConversation = false;
         private const bool ConfigUseFunctions = true;
 
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(ILogger<HomeController> logger, IFunctionDefinitionBuilder functionDefinitionBuilder)
         {
             _logger = logger;
+            _functionDefinitionBuilder = functionDefinitionBuilder;
             _coachAndFocusLLMApiKey = Environment.GetEnvironmentVariable("CoachAndFocusLLMApiKey");
             _coachAndFocusLLMEndpoint = Environment.GetEnvironmentVariable("CoachAndFocusLLMEndpoint");
             _llmHttpClient = new HttpClient();
@@ -239,6 +241,12 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                 var apiUrl = $"https://committees-api.parliament.uk/api/Committees?SearchTerm={searchTerm}";
                 await CallApi(apiUrl);
             }
+            if (functionName == "search_earlydaymotions")
+            {
+                var searchTerm = GetParameter<string>(arguments, "SearchTerm");
+                var apiUrl = $"https://oralquestionsandmotions-api.parliament.uk/EarlyDayMotions/list?parameters.searchTerm={searchTerm}";
+                await CallApi(apiUrl);
+            }
         }
 
         private static string GetFunctionName(dynamic choice, out Dictionary<string, object>? arguments)
@@ -381,11 +389,25 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                         },
                         required = new[] { "SearchTerm" }
                     }
+                },
+                new FunctionDefinition()
+                {
+                    Name = "search_earlydaymotions",
+                    Description = "Search early day motions",
+                    Parameters = new
+                    {
+                        type = "object",
+                        properties = new
+                        {
+                            SearchTerm = new { type = "string", description = "search term" }
+                        },
+                        required = new[] { "SearchTerm" }
+                    }
                 }
             };
             return functions;
         }
-
+        
         private T GetParameter<T>(Dictionary<string, object> arguments, string key, T defaultValue = default(T))
         {
             if (arguments.ContainsKey(key))
