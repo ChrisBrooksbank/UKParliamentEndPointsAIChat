@@ -62,6 +62,8 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
         [HttpPost]
         public async Task<IActionResult> SendMessageToAI(string userMessage)
         {
+            ViewBag.Request = userMessage;
+
             if (ConfigContinuingConversation)
             {
                 var messages = HttpContext.Session.GetString("Messages");
@@ -95,7 +97,7 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             }
 
             var payload = GetPayLoad();
-
+            
             var response = await _llmHttpClient.PostAsync(_coachAndFocusLLMEndpoint, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
             response.EnsureSuccessStatusCode();
             var responseContent = await response.Content.ReadAsStringAsync();
@@ -220,11 +222,10 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                 var apiUrl = $"http://commonsvotes-api.parliament.uk/data/divisions.json/search?queryParameters.searchTerm={searchTerm}";
                 await CallApi(apiUrl);
             }
-
             if (functionName == "search_lords_divisions")
             {
                 var searchTerm = GetParameter<string>(arguments, "searchTerm");
-                var apiUrl = $"http://lordsvotes-api.parliament.uk/data/divisions.json/search?queryParameters.searchTerm={searchTerm}";
+                var apiUrl = $"http://lordsvotes-api.parliament.uk/data/divisions/search?queryParameters.searchTerm={searchTerm}";
                 await CallApi(apiUrl);
             }
 
@@ -245,6 +246,14 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                 var searchTerm = GetParameter<string>(arguments, "SearchTerm");
                 var apiUrl = $"https://oralquestionsandmotions-api.parliament.uk/EarlyDayMotions/list?parameters.searchTerm={searchTerm}";
                 await CallApi(apiUrl);
+            }
+            if (functionName == "happening_now_in_commons")
+            {
+                await CallApi("https://now-api.parliament.uk/api/Message/message/CommonsMain/current");
+            }
+            if (functionName == "happening_now_in_lords")
+            {
+                await CallApi("https://now-api.parliament.uk/api/Message/message/LordsMain/current");
             }
         }
 
@@ -402,6 +411,16 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                         },
                         required = new[] { "SearchTerm" }
                     }
+                },
+                new FunctionDefinition()
+                {
+                    Name = "happening_now_in_commons",
+                    Description = "What is happening now in the commons. Annunciator.",
+                },
+                new FunctionDefinition()
+                {
+                    Name = "happening_now_in_lords",
+                    Description = "What is happening now in the lords. Annunciator.",
                 }
             };
             return functions;
