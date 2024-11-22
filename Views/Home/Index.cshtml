@@ -104,6 +104,7 @@
                     <strong>Parliamentary API Response:</strong>
                     <pre><code id="apiResponseContent" class="@responseClass">@Html.Raw(ViewBag.ApiResponse)</code></pre>
                     <button id="copyButton" class="btn btn-secondary" onclick="copyToClipboard()">Copy to Clipboard</button>
+                    <button id="explainButton" class="btn btn-secondary" onclick="explainThis()">Explain This</button>
                 </div>
             }
         </div>
@@ -116,6 +117,33 @@
             </form>
         </div>
 
+        <script>
+            document.addEventListener("DOMContentLoaded", function() {
+                var textarea = document.getElementById("userMessage");
+                textarea.focus();
+
+                textarea.addEventListener("keydown", function(event) {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        document.getElementById("chatForm").submit();
+                    }
+                });
+            });
+
+            function copyToClipboard() {
+                var copyText = document.getElementById("apiResponseContent").innerText;
+                navigator.clipboard.writeText(copyText).then(function () {
+                    alert("Copied to clipboard!");
+                }, function (err) {
+                    alert("Failed to copy: ", err);
+                });
+            }
+
+            function explainThis() {
+                var apiResponseContent = document.getElementById("apiResponseContent").innerText;
+                textarea.value = "summarise the data : ```" + apiResponseContent + "```";
+            }
+        </script>
     </div>
 </div>
 

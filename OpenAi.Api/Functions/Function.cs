@@ -12,5 +12,8 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions
 
         [JsonPropertyName("parameters")]
         public FunctionParameters Parameters { get; set; }
+
+        [JsonIgnore]
+        public string ApiUrl { get; set; }
     }
 }
