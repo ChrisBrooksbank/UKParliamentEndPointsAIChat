@@ -1,9 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
-using System.Text;
 using Markdig;
 using Newtonsoft.Json;
 using UKParliamentEndPointsAIChat.Ui.Models;
+using UKParliamentEndPointsAIChat.Ui.OpenAi.Api;
 using UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions;
 using UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Response;
 using JsonSerializer = System.Text.Json.JsonSerializer;
@@ -12,42 +12,14 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly ILogger<HomeController> _logger;
-        private readonly string _coachAndFocusLLMApiKey;
-        private readonly string _coachAndFocusLLMEndpoint;
-        private List<object> _messages = new List<object>();
-        private readonly HttpClient _llmHttpClient;
+        private readonly IOpenAiService _openAiService;
         private readonly HttpClient _apihttpClient;
         private IFunctionRepository _functionRepository;
 
-        private const double AITemperature = 0.7;
-        private const double AITop_p = 0.95;
-        private const int AIMaxTokens = 4000;
-        private const bool AIUseStream = false;
-
-        private const string SYSTEM_PROMPT =
-            "You are a helpful, friendly, very smart AI assistant that helps people find information on UK parliament. " +
-            "You will only find information relevant to UK parliament. " +
-            "Any questions in other fields will yield a response saying you are only for UK Parliament data." +
-            "https://www.parliament.uk/ is the primary source of data and whenever possible you should return a link to this site. " +
-            "Only return a link if its a real link that returns a 200 when a GET request is issued. " +
-            "Its vital you check any links are real links that return 200.  " +
-            "You should return any useful API links. You must look at webpage https://developer.parliament.uk/";
-
-        // saves LLM tokens
-        private const bool ConfigContinuingConversation = false;
-        private const bool ConfigUseFunctions = true;
-
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController()
         {
-            _logger = logger;
-            _coachAndFocusLLMApiKey = Environment.GetEnvironmentVariable("CoachAndFocusLLMApiKey");
-            _coachAndFocusLLMEndpoint = Environment.GetEnvironmentVariable("CoachAndFocusLLMEndpoint");
-            _llmHttpClient = new HttpClient();
-            _llmHttpClient.DefaultRequestHeaders.Add("api-key", _coachAndFocusLLMApiKey);
+            _openAiService = new OpenAIService();
             _apihttpClient = new HttpClient();
-            _messages.Clear();
-            _messages.Add(new { role = "system", content = new object[] { new { type = "text", text = SYSTEM_PROMPT } } });
             _functionRepository = new FunctionRepository();
         }
 
@@ -66,43 +38,8 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
         public async Task<IActionResult> SendMessageToAI(string userMessage)
         {
             ViewBag.Request = userMessage;
-
-            if (ConfigContinuingConversation)
-            {
-                var messages = HttpContext.Session.GetString("Messages");
-                _messages = string.IsNullOrEmpty(messages) ? GetNewMessagesList() : JsonSerializer.Deserialize<List<object>>(messages);
-            }
-            else
-            {
-                _messages = GetNewMessagesList();
-            }
-
-            if (ConfigContinuingConversation && userMessage.ToLower() == "clear")
-            {
-                _messages.RemoveRange(1, _messages.Count - 1);
-                HttpContext.Session.SetString("Messages", JsonSerializer.Serialize(_messages));
-            }
-
-            _messages.Add(new
-            {
-                role = "user",
-                content = new object[] {
-                    new {
-                        type = "text",
-                        text = userMessage
-                    }
-                }
-            });
-
-            if (ConfigContinuingConversation)
-            {
-                HttpContext.Session.SetString("Messages", JsonSerializer.Serialize(_messages));
-            }
-
-            var payload = GetPayLoad();
-            var payLoadJson = JsonSerializer.Serialize(payload);
-            var content = new StringContent(payLoadJson, Encoding.UTF8, "application/json");
-            var response = await _llmHttpClient.PostAsync(_coachAndFocusLLMEndpoint, content);
+            
+            var response = await _openAiService.SendMessageAsync(userMessage);
             response.EnsureSuccessStatusCode();
             var responseContent = await response.Content.ReadAsStringAsync();
 
@@ -120,25 +57,7 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             {
                 var responseData = JsonSerializer.Deserialize<GptResponse>(await response.Content.ReadAsStringAsync());
                 var messageContent = responseData.Choices[0].Message.Content;
-                _messages.Add(new
-                {
-                    role = "assistant",
-                    content = new object[]
-                    {
-                        new
-                        {
-                            type = "text",
-                            text = messageContent
-                        }
-                    }
-                });
-                if (ConfigContinuingConversation)
-                {
-                    HttpContext.Session.SetString("Messages", JsonSerializer.Serialize(_messages));
-                }
-
                 var htmlResponse = ParseAiMarkdownResponse(messageContent);
-
                 ViewBag.ResponseMessage = htmlResponse;
             }
 
@@ -161,105 +80,38 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             htmlResponse = htmlDoc.DocumentNode.OuterHtml;
             return htmlResponse;
         }
-
-        private object GetPayLoad()
-        {
-            Function[] functions = _functionRepository.GetAll();
-
-            var payload = new
-            {
-                messages = _messages,
-                temperature = AITemperature,
-                top_p = AITop_p,
-                max_tokens = AIMaxTokens,
-                stream = AIUseStream,
-                functions = functions,
-                function_call = functions != null ? "auto" : null
-            };
-            return payload;
-        }
-
+        
         private async Task HandleFunctionResult(dynamic choice)
         {
             string functionName = GetFunctionName(choice, out Dictionary<string, object>? arguments);
-
-            if (functionName == "search_parliament_member")
+            var function = _functionRepository.GetByName(functionName).FirstOrDefault();
+            if (function == null)
             {
-                var name = GetParameter<string>(arguments, "name");
-                var skip = GetParameter<int>(arguments, "skip");
-                var take = GetParameter<int>(arguments, "take", 20); ;
-                var apiUrl = $"https://members-api.parliament.uk/api/Members/Search?Name={Uri.EscapeDataString(name)}&skip={skip}&take={take}";
-                await CallApi(apiUrl);
+                return;
             }
-            if (functionName == "get_member_by_id")
-            {
-                var id = GetParameter<int>(arguments, "id");
-                var apiUrl = $"https://members-api.parliament.uk/api/Members/{id}";
-                await CallApi(apiUrl);
-            }
-            if (functionName == "search_treaties")
-            {
-                var searchText = GetParameter<string>(arguments, "SearchText");
-                var apiUrl = $"https://treaties-api.parliament.uk/api/Treaty?SearchText={searchText}";
-                await CallApi(apiUrl);
-            }
-            if (functionName == "search_roi")
-            {
-                var memberId = GetParameter<int>(arguments, "MemberId");
-                var apiUrl = $"https://interests-api.parliament.uk/api/v1/Interests/?MemberId={memberId}";
-                await CallApi(apiUrl);
-            }
-            if (functionName == "search_erskine_may")
-            {
-                var searchTerm = GetParameter<string>(arguments, "searchTerm");
-                var apiUrl = $"https://erskinemay-api.parliament.uk/api/Search/ParagraphSearchResults/{searchTerm}";
-                await CallApi(apiUrl);
-            }
-            if (functionName == "search_commons_divisions")
-            {
-                var searchTerm = GetParameter<string>(arguments, "searchTerm");
-                var apiUrl = $"http://commonsvotes-api.parliament.uk/data/divisions.json/search?queryParameters.searchTerm={searchTerm}";
-                await CallApi(apiUrl);
-            }
-            if (functionName == "search_lords_divisions")
-            {
-                var searchTerm = GetParameter<string>(arguments, "searchTerm");
-                var apiUrl = $"http://lordsvotes-api.parliament.uk/data/divisions/search?queryParameters.searchTerm={searchTerm}";
-                await CallApi(apiUrl);
-            }
-            if (functionName == "search_bills")
-            {
-                var searchTerm = GetParameter<string>(arguments, "searchTerm");
-                var apiUrl = $"https://bills-api.parliament.uk/api/v1/Bills?SearchTerm={searchTerm}";
-                await CallApi(apiUrl);
-            }
-            if (functionName == "search_committees")
-            {
-                var searchTerm = GetParameter<string>(arguments, "SearchTerm");
-                var apiUrl = $"https://committees-api.parliament.uk/api/Committees?SearchTerm={searchTerm}";
-                await CallApi(apiUrl);
-            }
-            if (functionName == "search_earlydaymotions")
-            {
-                var searchTerm = GetParameter<string>(arguments, "SearchTerm");
-                var apiUrl = $"https://oralquestionsandmotions-api.parliament.uk/EarlyDayMotions/list?parameters.searchTerm={searchTerm}";
-                await CallApi(apiUrl);
-            }
-            if (functionName == "happening_now_in_commons")
-            {
-                await CallApi("https://now-api.parliament.uk/api/Message/message/CommonsMain/current");
-            }
-            if (functionName == "happening_now_in_lords")
-            {
-                await CallApi("https://now-api.parliament.uk/api/Message/message/LordsMain/current");
-            }
-            if (functionName == "search_statutory_instruments")
-            {
-                var name = GetParameter<string>(arguments, "name");
-                await CallApi($"https://statutoryinstruments-api.parliament.uk/api/v2/StatutoryInstrument?Name={name}");
-            }
+            var url = GetUrl(function.ApiUrl, arguments);
+            await CallApi(url);
         }
 
+        public static string GetUrl(string urlTemplate, Dictionary<string, object>? arguments)
+        {
+            if (string.IsNullOrEmpty(urlTemplate))
+                throw new ArgumentException("URL template cannot be null or empty.", nameof(urlTemplate));
+
+            if (arguments == null || arguments.Count == 0)
+                return urlTemplate;
+
+            string resolvedUrl = urlTemplate;
+
+            foreach (var kvp in arguments)
+            {
+                string placeholder = $"{{{kvp.Key}}}";
+                string value = kvp.Value != null ? Uri.EscapeDataString(kvp.Value.ToString()) : "";
+                resolvedUrl = resolvedUrl.Replace(placeholder, value);
+            }
+            return resolvedUrl;
+        }
+        
         private static string GetFunctionName(dynamic choice, out Dictionary<string, object>? arguments)
         {
             var functionCall = choice.message.function_call;
@@ -268,16 +120,6 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             return functionName;
         }
         
-        private T GetParameter<T>(Dictionary<string, object> arguments, string key, T defaultValue = default(T))
-        {
-            if (arguments.ContainsKey(key))
-            {
-                return (T)Convert.ChangeType(arguments[key], typeof(T));
-            }
-
-            return defaultValue;
-        }
-
         private async Task CallApi(string apiUrl)
         {
             var urlMessage = $"<p>I created a API call for you <a href='{apiUrl}' target='_none'>{apiUrl}</a><p>";
@@ -295,20 +137,5 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                 ViewBag.ResponseMessage += "<p>API call failed</p>";
             }
         }
-
-
-        private List<object> GetNewMessagesList()
-        {
-            return new List<object>
-            {
-                new
-                {
-                    role = "system",
-                    content = new object[] {new {type = "text", text = SYSTEM_PROMPT}}
-                }
-            };
-        }
-
-
     }
 }

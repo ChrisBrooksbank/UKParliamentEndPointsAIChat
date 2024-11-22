@@ -56,6 +56,12 @@ public class FunctionBuilder: IFunctionBuilder
         return this;
     }
 
+    public FunctionBuilder SetApiUrl(string url)
+    {
+        _function.ApiUrl = url;
+        return this;
+    }
+
     public Function Build()
     {
         if (_hasParameters)
@@ -71,4 +77,6 @@ public class FunctionBuilder: IFunctionBuilder
         // If there are no parameters, we omit the Parameters property (set to null)
         return _function;
     }
+
+   
 }
