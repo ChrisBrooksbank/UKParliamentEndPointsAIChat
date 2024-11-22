@@ -97,6 +97,38 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions
                     .SetDescription("Search statutory instruments by name")
                     .AddParam("Name", "string", "name", isRequired: true)
                     .SetApiUrl("https://statutoryinstruments-api.parliament.uk/api/v2/StatutoryInstrument?Name={name}")
+                    .Build(),
+
+                FunctionBuilder.Create()
+                    .SetName("edms_for_memberid")
+                    .SetDescription("Get early day motions for member id")
+                    .AddParam("memberid", "integer", "id of member", isRequired: true)
+                    .SetApiUrl("https://members-api.parliament.uk/api/Members/{memberid}/Edms")
+                    .Build(),
+
+                FunctionBuilder.Create()
+                    .SetName("parties_list_by_house")
+                    .SetDescription("Get list of parties by house")
+                    .AddParam("house", "integer", "house. 1 = commons, 2 = lords.", isRequired: true)
+                    .SetApiUrl("https://members-api.parliament.uk/api/Parties/GetActive/{house}")
+                    .Build(),
+
+                FunctionBuilder.Create()
+                    .SetName("interests_categories")
+                    .SetDescription("Get list of categories members can register interests in")
+                    .SetApiUrl("https://interests-api.parliament.uk/api/v1/Categories")
+                    .Build(),
+
+                FunctionBuilder.Create()
+                    .SetName("recently_updated_bills")
+                    .SetDescription("Gets list of recently updated bills")
+                    .SetApiUrl("https://bills-api.parliament.uk/api/v1/Bills?SortOrder=DateUpdatedDescending&skip=0&take=20")
+                    .Build(),
+
+                FunctionBuilder.Create()
+                    .SetName("recently_tabled_edms")
+                    .SetDescription("Gets list of recently tabled early day motions")
+                    .SetApiUrl("https://oralquestionsandmotions-api.parliament.uk/EarlyDayMotions/list?parameters.orderBy=DateTabledDesc?skip=0&take=20")
                     .Build()
             };
         }

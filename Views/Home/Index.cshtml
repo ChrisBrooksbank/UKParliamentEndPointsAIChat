@@ -67,6 +67,21 @@
                     <div class="carousel-item">
                         <span>Early day motions on fish</span>
                     </div>
+                    <div class="carousel-item">
+                        <span>Get early day motions for member 1471</span>
+                    </div>
+                    <div class="carousel-item">
+                        <span>Get parties for house of commons</span>
+                    </div>
+                    <div class="carousel-item">
+                        <span>Get parties for house of lords</span>
+                    </div>
+                    <div class="carousel-item">
+                        <span>List categories for members interests</span>
+                    </div>
+                    <div class="carousel-item">
+                        <span>List recently updated bills</span>
+                    </div>
                 </div>
                 <button class="carousel-control-prev" type="button" data-bs-target="#queryCarousel" data-bs-slide="prev">
                     <span class="carousel-control-prev-icon" aria-hidden="true"></span>
@@ -141,7 +156,8 @@
 
             function explainThis() {
                 var apiResponseContent = document.getElementById("apiResponseContent").innerText;
-                textarea.value = "summarise the data : ```" + apiResponseContent + "```";
+                var textarea = document.getElementById("userMessage");
+                textarea.value = "summarise the data : " + apiResponseContent;
             }
         </script>
     </div>
