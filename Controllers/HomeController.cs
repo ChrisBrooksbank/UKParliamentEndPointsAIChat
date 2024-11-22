@@ -4,6 +4,8 @@ using System.Text;
 using Markdig;
 using Newtonsoft.Json;
 using UKParliamentEndPointsAIChat.Ui.Models;
+using UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions;
+using UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Response;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace UKParliamentEndPointsAIChat.Ui.Controllers
@@ -11,12 +13,12 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
-        private readonly IFunctionDefinitionBuilder _functionDefinitionBuilder;
         private readonly string _coachAndFocusLLMApiKey;
         private readonly string _coachAndFocusLLMEndpoint;
         private List<object> _messages = new List<object>();
         private readonly HttpClient _llmHttpClient;
         private readonly HttpClient _apihttpClient;
+        private IFunctionRepository _functionRepository;
 
         private const double AITemperature = 0.7;
         private const double AITop_p = 0.95;
@@ -29,7 +31,7 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             "Any questions in other fields will yield a response saying you are only for UK Parliament data." +
             "https://www.parliament.uk/ is the primary source of data and whenever possible you should return a link to this site. " +
             "Only return a link if its a real link that returns a 200 when a GET request is issued. " +
-            "Its vital you check any links are real links that return 200.  " + 
+            "Its vital you check any links are real links that return 200.  " +
             "You should return any useful API links. You must look at webpage https://developer.parliament.uk/";
 
         // saves LLM tokens
@@ -45,7 +47,8 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             _llmHttpClient.DefaultRequestHeaders.Add("api-key", _coachAndFocusLLMApiKey);
             _apihttpClient = new HttpClient();
             _messages.Clear();
-            _messages.Add(new {role = "system", content = new object[] {new{type = "text", text = SYSTEM_PROMPT}}});
+            _messages.Add(new { role = "system", content = new object[] { new { type = "text", text = SYSTEM_PROMPT } } });
+            _functionRepository = new FunctionRepository();
         }
 
         public IActionResult Index()
@@ -71,7 +74,7 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             }
             else
             {
-               _messages = GetNewMessagesList();
+                _messages = GetNewMessagesList();
             }
 
             if (ConfigContinuingConversation && userMessage.ToLower() == "clear")
@@ -97,8 +100,9 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             }
 
             var payload = GetPayLoad();
-            
-            var response = await _llmHttpClient.PostAsync(_coachAndFocusLLMEndpoint, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+            var payLoadJson = JsonSerializer.Serialize(payload);
+            var content = new StringContent(payLoadJson, Encoding.UTF8, "application/json");
+            var response = await _llmHttpClient.PostAsync(_coachAndFocusLLMEndpoint, content);
             response.EnsureSuccessStatusCode();
             var responseContent = await response.Content.ReadAsStringAsync();
 
@@ -160,7 +164,7 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
 
         private object GetPayLoad()
         {
-            var functions = GetFunctionDefinitions();
+            Function[] functions = _functionRepository.GetAll();
 
             var payload = new
             {
@@ -169,8 +173,8 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                 top_p = AITop_p,
                 max_tokens = AIMaxTokens,
                 stream = AIUseStream,
-                functions = ConfigUseFunctions ? functions : null,
-                function_call = ConfigUseFunctions ? "auto" : null
+                functions = functions,
+                function_call = functions != null ? "auto" : null
             };
             return payload;
         }
@@ -181,41 +185,36 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
 
             if (functionName == "search_parliament_member")
             {
-                var name =  GetParameter<string>(arguments, "name");
+                var name = GetParameter<string>(arguments, "name");
                 var skip = GetParameter<int>(arguments, "skip");
-                var take = GetParameter<int>(arguments, "take", 20);;
+                var take = GetParameter<int>(arguments, "take", 20); ;
                 var apiUrl = $"https://members-api.parliament.uk/api/Members/Search?Name={Uri.EscapeDataString(name)}&skip={skip}&take={take}";
                 await CallApi(apiUrl);
             }
-
             if (functionName == "get_member_by_id")
             {
-                var id = GetParameter<int>(arguments, "Id");
+                var id = GetParameter<int>(arguments, "id");
                 var apiUrl = $"https://members-api.parliament.uk/api/Members/{id}";
                 await CallApi(apiUrl);
             }
-
             if (functionName == "search_treaties")
             {
                 var searchText = GetParameter<string>(arguments, "SearchText");
                 var apiUrl = $"https://treaties-api.parliament.uk/api/Treaty?SearchText={searchText}";
                 await CallApi(apiUrl);
             }
-
             if (functionName == "search_roi")
             {
                 var memberId = GetParameter<int>(arguments, "MemberId");
                 var apiUrl = $"https://interests-api.parliament.uk/api/v1/Interests/?MemberId={memberId}";
                 await CallApi(apiUrl);
             }
-
             if (functionName == "search_erskine_may")
             {
                 var searchTerm = GetParameter<string>(arguments, "searchTerm");
                 var apiUrl = $"https://erskinemay-api.parliament.uk/api/Search/ParagraphSearchResults/{searchTerm}";
                 await CallApi(apiUrl);
             }
-
             if (functionName == "search_commons_divisions")
             {
                 var searchTerm = GetParameter<string>(arguments, "searchTerm");
@@ -228,7 +227,6 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
                 var apiUrl = $"http://lordsvotes-api.parliament.uk/data/divisions/search?queryParameters.searchTerm={searchTerm}";
                 await CallApi(apiUrl);
             }
-
             if (functionName == "search_bills")
             {
                 var searchTerm = GetParameter<string>(arguments, "searchTerm");
@@ -255,6 +253,11 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             {
                 await CallApi("https://now-api.parliament.uk/api/Message/message/LordsMain/current");
             }
+            if (functionName == "search_statutory_instruments")
+            {
+                var name = GetParameter<string>(arguments, "name");
+                await CallApi($"https://statutoryinstruments-api.parliament.uk/api/v2/StatutoryInstrument?Name={name}");
+            }
         }
 
         private static string GetFunctionName(dynamic choice, out Dictionary<string, object>? arguments)
@@ -263,167 +266,6 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             var functionName = (string)functionCall.name;
             arguments = JsonConvert.DeserializeObject<Dictionary<string, object>>((string)functionCall.arguments);
             return functionName;
-        }
-
-        private static FunctionDefinition[] GetFunctionDefinitions()
-        {
-            var functions = new[]
-            {
-                new FunctionDefinition
-                {
-                    Name = "search_parliament_member",
-                    Description = "Search for UK Parliament members by name",
-                    Parameters = new
-                    {
-                        type = "object",
-                        properties = new
-                        {
-                            name = new { type = "string", description = "The full or partial name of the member" },
-                            skip = new { type = "integer", description = "Number of records to skip" },
-                            take = new { type = "integer", description = "Number of records to take" }
-                        },
-                        required = new[] { "name" }
-                    }
-                },
-                new FunctionDefinition
-                {
-                    Name = "get_member_by_id",
-                    Description = "Get UK Parliament member by id",
-                    Parameters = new
-                    {
-                        type = "object",
-                        properties = new
-                        {
-                            id = new { type = "string", description = "The id of the member" }
-                        },
-                        required = new[] { "id" }
-                    }
-                },
-                new FunctionDefinition()
-                {
-                    Name = "search_treaties",
-                    Description = "Search UK parliament treaties",
-                    Parameters = new
-                    {
-                        type = "object",
-                        properties = new
-                        {
-                            SearchText = new { type = "string", description = "Search Text" }
-                        },
-                        required = new[] { "SearchText" }
-                    }
-                },
-                new FunctionDefinition()
-                {
-                    Name = "search_roi",
-                    Description = "Search registered interests (ROI)",
-                    Parameters = new
-                    {
-                        type = "object",
-                        properties = new
-                        {
-                            MemberId = new { type = "integer", description = "Member Id" }
-                        },
-                        required = new[] { "MemberId" }
-                    }
-                },
-                new FunctionDefinition()
-                {
-                    Name = "search_erskine_may",
-                    Description = "Search erskine may",
-                    Parameters = new
-                    {
-                        type = "object",
-                        properties = new
-                        {
-                            searchTerm = new { type = "string", description = "search term" }
-                        },
-                        required = new[] { "searchTerm" }
-                    }
-                },
-                new FunctionDefinition()
-                {
-                    Name = "search_commons_divisions",
-                    Description = "Search commons divisions",
-                    Parameters = new
-                    {
-                        type = "object",
-                        properties = new
-                        {
-                            searchTerm = new { type = "string", description = "search term" },
-                            startDate = new { type = "string", description = "start date" },
-                            endDate = new { type = "string", description = "end date" }
-                        }
-                    }
-                },
-                new FunctionDefinition()
-                {
-                    Name = "search_lords_divisions",
-                    Description = "Search commons divisions",
-                    Parameters = new
-                    {
-                        type = "object",
-                        properties = new
-                        {
-                            searchTerm = new { type = "string", description = "search term" }
-                        },
-                        required = new[] { "searchTerm" }
-                    }
-                },
-                new FunctionDefinition()
-                {
-                    Name = "search_bills",
-                    Description = "Search bills",
-                    Parameters = new
-                    {
-                        type = "object",
-                        properties = new
-                        {
-                            searchTerm = new { type = "string", description = "search term" }
-                        },
-                        required = new[] { "searchTerm" }
-                    }
-                },
-                new FunctionDefinition()
-                {
-                    Name = "search_committees",
-                    Description = "Search committees",
-                    Parameters = new
-                    {
-                        type = "object",
-                        properties = new
-                        {
-                            SearchTerm = new { type = "string", description = "search term" }
-                        },
-                        required = new[] { "SearchTerm" }
-                    }
-                },
-                new FunctionDefinition()
-                {
-                    Name = "search_earlydaymotions",
-                    Description = "Search early day motions",
-                    Parameters = new
-                    {
-                        type = "object",
-                        properties = new
-                        {
-                            SearchTerm = new { type = "string", description = "search term" }
-                        },
-                        required = new[] { "SearchTerm" }
-                    }
-                },
-                new FunctionDefinition()
-                {
-                    Name = "happening_now_in_commons",
-                    Description = "What is happening now in the commons. Annunciator.",
-                },
-                new FunctionDefinition()
-                {
-                    Name = "happening_now_in_lords",
-                    Description = "What is happening now in the lords. Annunciator.",
-                }
-            };
-            return functions;
         }
         
         private T GetParameter<T>(Dictionary<string, object> arguments, string key, T defaultValue = default(T))
@@ -439,7 +281,7 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
         private async Task CallApi(string apiUrl)
         {
             var urlMessage = $"<p>I created a API call for you <a href='{apiUrl}' target='_none'>{apiUrl}</a><p>";
-                    
+
             ViewBag.ResponseMessage = urlMessage;
 
             var apiResponse = await _apihttpClient.GetAsync(apiUrl);
@@ -467,6 +309,6 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
             };
         }
 
-        
+
     }
 }
