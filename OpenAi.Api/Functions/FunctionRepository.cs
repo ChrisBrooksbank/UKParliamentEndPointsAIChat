@@ -49,6 +49,10 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions
                     .SetName("search_commons_divisions")
                     .SetDescription("Search commons divisions")
                     .AddParam("searchTerm", "string", "search term", isRequired:true)
+                    .AddParam("memberId", "integer", "member id", isRequired:false)
+                    .AddParam("queryParameters.startDate", "string", "Start date in YYYY-MM-DD format", isRequired:false)
+                    .AddParam("queryParameters.endDate", "string", "End date in YYYY-MM-DD format", isRequired:false)
+                    .AddParam("queryParameters.divisionNumber", "integer", "Division number", isRequired:false)
                     .SetApiUrl("http://commonsvotes-api.parliament.uk/data/divisions.json/search?queryParameters.searchTerm={searchTerm}")
                     .Build(),
 
