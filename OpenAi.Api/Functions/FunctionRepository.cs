@@ -130,6 +130,7 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions
                 FunctionBuilder.Create()
                     .SetName("recently_tabled_edms")
                     .SetDescription("Gets list of recently tabled early day motions")
+                    .AddParam("take", "integer", "max number of records to get", isRequired: false)
                     .SetApiUrl("https://oralquestionsandmotions-api.parliament.uk/EarlyDayMotions/list?parameters.orderBy=DateTabledDesc?skip=0&take=20")
                     .Build(),
 
