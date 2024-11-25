@@ -6,6 +6,8 @@
     {
         responseClass = "language-xml";
     }
+
+    var exampleQueries = ViewBag.ExampleQueries as List<string>;
 }
 
 <div class="text-center">
@@ -19,69 +21,15 @@
             <span><strong>Example queries:</strong></span>
             <div id="queryCarousel" class="carousel slide" data-bs-ride="carousel">
                 <div class="carousel-inner">
-                    <div class="carousel-item active">
-                        <span>What is the function of UK Parliament</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>Who is Boris Johnson</span>
-                    </div>
-                    <div class ="carousel-item">
-                        <span>What is happening now in Commons</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>Statutory instruments on harbour</span>
-                    </div>
-                    <div class ="carousel-item">
-                        <span>What is happening now in Lords</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>Who is member with id 1471</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>Treaties on fish</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>Treaties with Spain</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>Present all the information in {CopyAndPastedApiResult}</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>What are registered interests for member 172</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>Search Erskine May for mace</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>Search Commons Divisions for refugee</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>Lords Divisions on refugee</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>Bills on fish</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>Committees on women</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>Early day motions on fish</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>Get early day motions for member 1471</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>Get parties for house of commons</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>Get parties for house of lords</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>List categories for members interests</span>
-                    </div>
-                    <div class="carousel-item">
-                        <span>List recently updated bills</span>
-                    </div>
+                    @if (exampleQueries != null)
+                    {
+                        for (int i = 0; i < exampleQueries.Count; i++)
+                        {
+                            <div class="carousel-item @(i == 0 ? "active" : "")">
+                                <span>@exampleQueries[i]</span>
+                            </div>
+                        }
+                    }
                 </div>
                 <button class="carousel-control-prev" type="button" data-bs-target="#queryCarousel" data-bs-slide="prev">
                     <span class="carousel-control-prev-icon" aria-hidden="true"></span>
@@ -162,26 +110,3 @@
         </script>
     </div>
 </div>
-
-<script>
-    document.addEventListener("DOMContentLoaded", function() {
-        var textarea = document.getElementById("userMessage");
-        textarea.focus();
-
-        textarea.addEventListener("keydown", function(event) {
-            if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                document.getElementById("chatForm").submit();
-            }
-        });
-    });
-
-    function copyToClipboard() {
-        var copyText = document.getElementById("apiResponseContent").innerText;
-        navigator.clipboard.writeText(copyText).then(function () {
-            alert("Copied to clipboard!");
-        }, function (err) {
-            alert("Failed to copy: ", err);
-        });
-    }
-</script>

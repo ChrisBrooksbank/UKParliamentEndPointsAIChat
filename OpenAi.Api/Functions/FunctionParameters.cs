@@ -11,6 +11,7 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions
         public Dictionary<string, ParameterDetail> Properties { get; set; }
 
         [JsonPropertyName("required")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public List<string> Required { get; set; }
     }
 }
