@@ -63,6 +63,7 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions
                     .SetName("search_bills")
                     .SetDescription("Search bills")
                     .AddParam("searchTerm", "string", "search term", isRequired: true)
+                    .AddParam("MemberId", "integer", "member id", isRequired: false)
                     .SetApiUrl("https://bills-api.parliament.uk/api/v1/Bills?SearchTerm={searchTerm}")
                     .Build(),
 
@@ -122,13 +123,26 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions
                 FunctionBuilder.Create()
                     .SetName("recently_updated_bills")
                     .SetDescription("Gets list of recently updated bills")
-                    .SetApiUrl("https://bills-api.parliament.uk/api/v1/Bills?SortOrder=DateUpdatedDescending&skip=0&take=20")
+                    .AddParam("take", "integer", "max number of records to get", isRequired: false)
+                    .SetApiUrl("https://bills-api.parliament.uk/api/v1/Bills?SortOrder=DateUpdatedDescending&skip=0&take={take}")
                     .Build(),
 
                 FunctionBuilder.Create()
                     .SetName("recently_tabled_edms")
                     .SetDescription("Gets list of recently tabled early day motions")
                     .SetApiUrl("https://oralquestionsandmotions-api.parliament.uk/EarlyDayMotions/list?parameters.orderBy=DateTabledDesc?skip=0&take=20")
+                    .Build(),
+
+                FunctionBuilder.Create()
+                    .SetName("bill_types")
+                    .SetDescription("Get list of bill types")
+                    .SetApiUrl("https://bills-api.parliament.uk/api/v1/BillTypes")
+                    .Build(),
+
+                FunctionBuilder.Create()
+                    .SetName("bill_stages")
+                    .SetDescription("Get list of bill stages")
+                    .SetApiUrl("https://bills-api.parliament.uk/api/v1/Stages")
                     .Build()
             };
         }

@@ -82,7 +82,20 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api
                 string value = kvp.Value != null ? Uri.EscapeDataString(kvp.Value.ToString()) : "";
                 resolvedUrl = resolvedUrl.Replace(placeholder, value);
             }
-            return resolvedUrl;
+
+            // Remove any query parameters with unresolved placeholders
+            var uriBuilder = new UriBuilder(resolvedUrl);
+            var query = System.Web.HttpUtility.ParseQueryString(uriBuilder.Query);
+            foreach (var key in query.AllKeys)
+            {
+                if (query[key]?.Contains("{") == true)
+                {
+                    query.Remove(key);
+                }
+            }
+            uriBuilder.Query = query.ToString();
+
+            return uriBuilder.ToString();
         }
 
         private static string ParseAiMarkdownResponse(string messageContent)
