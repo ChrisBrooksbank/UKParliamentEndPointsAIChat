@@ -39,12 +39,12 @@ public class FunctionBuilder: IFunctionBuilder
         return this;
     }
 
-    public FunctionBuilder AddParam(string paramName, string type, string description, bool isRequired = false)
+    public FunctionBuilder AddParam(string paramName, OpenApiParameterType type, string description, bool isRequired = false)
     {
         _hasParameters = true;
         _properties[paramName] = new ParameterDetail
         {
-            Type = type,
+            Type = GetType(type),
             Description = description
         };
 
@@ -54,6 +54,19 @@ public class FunctionBuilder: IFunctionBuilder
         }
 
         return this;
+    }
+
+    private string GetType(OpenApiParameterType type)
+    {
+        switch (type)
+        {
+            case OpenApiParameterType.String:
+                return "string";
+            case OpenApiParameterType.Integer:
+                return "integer";
+            default:
+                throw new ArgumentOutOfRangeException(nameof(type), type, null);
+        }
     }
 
     public FunctionBuilder SetApiUrl(string url)
