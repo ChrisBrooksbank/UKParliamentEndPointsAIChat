@@ -28,7 +28,8 @@
                 "List categories for members interests",
                 "List recently updated bills",
                 "Get list of bill types",
-                "Get list of bill stages"
+                "Get list of bill stages",
+                "Get list of committee meetings in last month"
             };
         }
     }
