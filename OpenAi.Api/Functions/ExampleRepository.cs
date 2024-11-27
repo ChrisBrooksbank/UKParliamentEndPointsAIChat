@@ -29,7 +29,9 @@
                 "List recently updated bills",
                 "Get list of bill types",
                 "Get list of bill stages",
-                "Get list of committee meetings in last month"
+                "Get list of committee meetings in November 2024",
+                "Get list of departments",
+                "Get list of answering bodies"
             };
         }
     }
