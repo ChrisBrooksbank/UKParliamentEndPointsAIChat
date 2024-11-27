@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using OpenAI.Chat;
+using System.Reflection;
+using System.Text;
 using System.Text.Json;
 using UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions;
 
@@ -29,15 +31,39 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api
 
         public OpenAIService()
         {
-            _coachAndFocusLLMApiKey = Environment.GetEnvironmentVariable("CoachAndFocusLLMApiKey");
-            _coachAndFocusLLMEndpoint = Environment.GetEnvironmentVariable("CoachAndFocusLLMEndpoint");
+            var useApi = false; // TODO Im overdue config here !
 
+            var apiKey = useApi ? "CoachAndFocusLLMApiKey2" : "CoachAndFocusLLMApiKey";
+            var endpoint = useApi ? "CoachAndFocusLLMEndpoint2" : "CoachAndFocusLLMEndpoint";
+
+            _coachAndFocusLLMApiKey = Environment.GetEnvironmentVariable(apiKey);
+            _coachAndFocusLLMEndpoint = Environment.GetEnvironmentVariable(endpoint);
+            
             _functionRepository = new FunctionRepository();
             _llmHttpClient = new HttpClient();
-            _llmHttpClient.DefaultRequestHeaders.Add("api-key", _coachAndFocusLLMApiKey);
+
+            SetAuthorizationHeader(useApi);
         }
 
-        public async Task<HttpResponseMessage> SendMessageAsync(string message)
+        public async Task<string> SendMessageAsync(string message, bool useApi = false)
+        {
+            var response = useApi ? await SendMessageAsyncApi(message) : await SendMessageAsyncAzure(message);
+            return response;
+        }
+
+        // TODO rewrite this method to not use the OPENAI nuget package and then remove use of that package
+        // Its use of functions demands c# functions to be defined in the code
+        private async Task<string> SendMessageAsyncApi(string message)
+        {
+            // https://www.nuget.org/packages/OpenAI/
+            ChatCompletionOptions options = new(){ };
+            ChatClient client = new(model: "gpt-4o", apiKey: Environment.GetEnvironmentVariable("CoachAndFocusLLMApiKey2"));
+            ChatCompletion completion = await client.CompleteChatAsync($"Say '{message}'");
+            var response = completion.Content[0].Text;
+            return response;
+        }
+        
+        private async Task<string> SendMessageAsyncAzure(string message)
         {
             var messages = new List<object>
             {
@@ -64,8 +90,24 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api
 
             var content = new StringContent(payLoadJson, Encoding.UTF8, "application/json");
             var response = await _llmHttpClient.PostAsync(_coachAndFocusLLMEndpoint, content);
+            response.EnsureSuccessStatusCode();
+            var responseContent = await response.Content.ReadAsStringAsync();
+            return responseContent;
+        }
 
-            return response;
+        private void SetAuthorizationHeader(bool useApi)
+        {
+            _llmHttpClient.DefaultRequestHeaders.Remove("Authorization");
+            _llmHttpClient.DefaultRequestHeaders.Remove("api-key");
+
+            if (useApi)
+            {
+                _llmHttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_coachAndFocusLLMApiKey}");
+            }
+            else
+            {
+                _llmHttpClient.DefaultRequestHeaders.Add("api-key", _coachAndFocusLLMApiKey);
+            }
         }
 
         private object GetPayLoad(List<object> messages, Function[] functions)

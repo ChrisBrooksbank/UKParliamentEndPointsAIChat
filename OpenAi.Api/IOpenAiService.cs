@@ -4,6 +4,6 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api
 {
     public interface IOpenAiService
     {
-        Task<HttpResponseMessage> SendMessageAsync(string message);
+        Task<string> SendMessageAsync(string message, bool useApi = false);
     }
 }

@@ -36,22 +36,29 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
         [HttpPost]
         public async Task<IActionResult> SendMessageToAI(string userMessage)
         {
+            var useApi = false; // TODO Im overdue config here !
             ViewBag.ExampleQueries = _exampleRepository.GetAll();
             ViewBag.Request = userMessage;
 
-            var response = await _openAiService.SendMessageAsync(userMessage);
-            response.EnsureSuccessStatusCode();
-            var responseContent = await response.Content.ReadAsStringAsync();
+            var responseContent = await _openAiService.SendMessageAsync(userMessage, useApi);
 
-            var url = await _gptResponseParser.GetApiUrl(responseContent);
-            if (string.IsNullOrWhiteSpace(url))
+            if (useApi)
             {
-                ViewBag.ResponseMessage = _gptResponseParser.GetHtml(responseContent);
+                ViewBag.ResponseMessage = responseContent;
             }
             else
             {
-                await CallApi(url);
+                var url = await _gptResponseParser.GetApiUrl(responseContent);
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    ViewBag.ResponseMessage = _gptResponseParser.GetHtml(responseContent);
+                }
+                else
+                {
+                    await CallApi(url);
+                }
             }
+          
 
             return View("Index");
         }

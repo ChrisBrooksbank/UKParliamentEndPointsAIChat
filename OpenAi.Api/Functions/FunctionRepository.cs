@@ -156,6 +156,18 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions
                     .AddParam("fromdate", OpenApiParameterType.String, "From date in format YYYY-MM-DD", isRequired: true)
                     .AddParam("todate", OpenApiParameterType.String, "To date in format YYYY-MM-DD", isRequired: true)
                     .SetApiUrl("https://committees-api.parliament.uk/api/Broadcast/Meetings?FromDate={fromdate}&ToDate={todate}")
+                    .Build(),
+
+                FunctionBuilder.Create()
+                    .SetName("get_departments")
+                    .SetDescription("Get list of departments")
+                    .SetApiUrl("https://members-api.parliament.uk/api/Reference/Departments")
+                    .Build(),
+
+                FunctionBuilder.Create()
+                    .SetName("get_answering_bodies")
+                    .SetDescription("Get list of answering bodies")
+                    .SetApiUrl("https://members-api.parliament.uk/api/Reference/AnsweringBodies")
                     .Build()
             };
         }
