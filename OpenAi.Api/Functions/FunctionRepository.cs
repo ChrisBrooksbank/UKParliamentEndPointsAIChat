@@ -168,7 +168,30 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions
                     .SetName("get_answering_bodies")
                     .SetDescription("Get list of answering bodies")
                     .SetApiUrl("https://members-api.parliament.uk/api/Reference/AnsweringBodies")
-                    .Build()
+                    .Build(),
+
+                FunctionBuilder.Create()
+                    .SetName("get_committee_types")
+                    .SetDescription("Get list of committee types")
+                    .SetApiUrl("https://committees-api.parliament.uk/api/CommitteeType")
+                    .Build(),
+
+                FunctionBuilder.Create()
+                    .SetName("get_contributions")
+                    .SetDescription("Get contributions from a specified member")
+                    .AddParam("memberid", OpenApiParameterType.Integer, "The id of the member", isRequired: true)
+                    .SetApiUrl("https://members-api.parliament.uk/api/Members/{memberid}/ContributionSummary?page=1")
+                    .Build(),
+
+                FunctionBuilder.Create()
+                    .SetName("search_hansard")
+                    .SetDescription("Search hansard for contributions")
+                    .AddParam("house", OpenApiParameterType.Integer, "house. 1 = commons, 2 = lords.", isRequired: true)
+                    .AddParam("queryParameters.startDate", OpenApiParameterType.String, "Start date in YYYY-MM-DD format", isRequired:true)
+                    .AddParam("queryParameters.endDate", OpenApiParameterType.String, "End date in YYYY-MM-DD format", isRequired:true)
+                    .AddParam("searchTerm", OpenApiParameterType.String, "search term", isRequired: true)
+                    .SetApiUrl("https://hansard-api.parliament.uk/search.json?queryParameters.house={house}&queryParameters.startDate={queryParameters.startDate}&queryParameters.endDate={queryParameters.startDate}&queryParameters.searchTerm={searchTerm}")
+                    .Build(),
             };
         }
 
