@@ -34,7 +34,9 @@
                 "Get list of answering bodies",
                 "Get list of committee types",
                 "Get list of contributions from member 172",
-                "Search hansard for contributions on brexit for November 2024"
+                "Search hansard for contributions on brexit for November 2024",
+                "Get published registers of interests",
+                "Get oral question times for questions tabled in november 2024"
             };
         }
     }

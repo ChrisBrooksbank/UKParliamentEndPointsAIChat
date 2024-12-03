@@ -192,6 +192,22 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions
                     .AddParam("searchTerm", OpenApiParameterType.String, "search term", isRequired: true)
                     .SetApiUrl("https://hansard-api.parliament.uk/search.json?queryParameters.house={house}&queryParameters.startDate={queryParameters.startDate}&queryParameters.endDate={queryParameters.startDate}&queryParameters.searchTerm={searchTerm}")
                     .Build(),
+
+                  
+                      FunctionBuilder.Create()
+                    .SetName("search_oral_question_times")
+                    .SetDescription("Get oral question times")
+                    .AddParam("parameters.answeringDateStart", OpenApiParameterType.String, "Start date in YYYY-MM-DD format", isRequired:true)
+                    .AddParam("parameters.answeringDateEnd", OpenApiParameterType.String, "End date in YYYY-MM-DD format", isRequired:true)                  
+                    .SetApiUrl("https://oralquestionsandmotions-api.parliament.uk/oralquestiontimes/list?parameters.answeringDateStart={parameters.answeringDateStart}&parameters.answeringDateEnd={parameters.answeringDateEnd}")
+                    .Build(),
+
+                 
+                     FunctionBuilder.Create()
+                     .SetName("get_registers_of_interests")
+                    .SetDescription("get published registers of interests")                   
+                    .SetApiUrl("https://interests-api.parliament.uk/api/v1/Registers")
+                    .Build()
             };
         }
 
