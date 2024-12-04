@@ -207,7 +207,24 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions
                      .SetName("get_registers_of_interests")
                     .SetDescription("get published registers of interests")                   
                     .SetApiUrl("https://interests-api.parliament.uk/api/v1/Registers")
-                    .Build()
+                    .Build(),
+
+                     FunctionBuilder.Create()
+                    .SetName("get_constituencys")
+                    .SetDescription("get list of constituencys")                 
+                    .AddParam("skip", OpenApiParameterType.Integer, "number of records to skip", isRequired: false)  
+                    .AddParam("take", OpenApiParameterType.Integer, "max number of records to get", isRequired: false)  
+                    .SetApiUrl("https://members-api.parliament.uk/api/Location/Constituency/Search?&skip={skip}&take={take}")
+                    .Build(),
+
+                    FunctionBuilder.Create()
+                    .SetName("get_election_results_for_constituency")
+                    .SetDescription("get election results for a constituency")                 
+                    .AddParam("constituencyid", OpenApiParameterType.Integer, "id of constituencyid to fetch election results for", isRequired: true)                   
+                    .SetApiUrl("https://members-api.parliament.uk/api/Location/Constituency/{constituencyid}/ElectionResults")
+                    .Build(),
+
+
             };
         }
 

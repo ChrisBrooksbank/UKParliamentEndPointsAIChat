@@ -36,7 +36,9 @@
                 "Get list of contributions from member 172",
                 "Search hansard for contributions on brexit for November 2024",
                 "Get published registers of interests",
-                "Get oral question times for questions tabled in november 2024"
+                "Get oral question times for questions tabled in november 2024",
+                "Get list of constituencys",
+                "Get election results for constituency 4496",
             };
         }
     }
