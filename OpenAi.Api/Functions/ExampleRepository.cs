@@ -4,7 +4,7 @@
     {
         public List<string> GetAll()
         {
-            return new List<string>
+            var items = new List<string>
             {
                 "What is the function of UK Parliament",
                 "Who is Boris Johnson",
@@ -38,8 +38,10 @@
                 "Get published registers of interests",
                 "Get oral question times for questions tabled in november 2024",
                 "Get list of constituencys",
-                "Get election results for constituency 4496",
+                "Get election results for constituency 4359",
             };
+            var random = new Random();
+            return items.OrderBy(x => random.Next()).ToList();
         }
     }
 }
