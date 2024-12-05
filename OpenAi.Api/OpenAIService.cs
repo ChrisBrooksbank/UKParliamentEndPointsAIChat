@@ -1,4 +1,5 @@
-﻿using OpenAI.Chat;
+﻿using System.Net;
+using OpenAI.Chat;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -63,7 +64,7 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api
             return response;
         }
         
-        private async Task<string> SendMessageAsyncAzure(string message)
+async Task<string> SendMessageAsyncAzure(string message)
         {
             var messages = new List<object>
             {
@@ -83,16 +84,24 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api
                     }
                 }
             });
-           
+
             var functions = _functionRepository.GetAll();
             var payLoad = GetPayLoad(messages, functions);
             var payLoadJson = JsonSerializer.Serialize(payLoad);
 
             var content = new StringContent(payLoadJson, Encoding.UTF8, "application/json");
-            var response = await _llmHttpClient.PostAsync(_coachAndFocusLLMEndpoint, content);
-            response.EnsureSuccessStatusCode();
-            var responseContent = await response.Content.ReadAsStringAsync();
-            return responseContent;
+
+            try
+            {
+                var response = await _llmHttpClient.PostAsync(_coachAndFocusLLMEndpoint, content);
+                response.EnsureSuccessStatusCode();
+                var responseContent = await response.Content.ReadAsStringAsync();
+                return responseContent;
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == (HttpStatusCode)429)
+            {
+                return "Rate limit reached for requests to Open AI. Try again later.";
+            }
         }
 
         private void SetAuthorizationHeader(bool useApi)

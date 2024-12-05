@@ -21,8 +21,17 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api
             {
                 return string.Empty;
             }
-
-            dynamic jsonResponse = JsonConvert.DeserializeObject(gptResponse);
+            
+            dynamic jsonResponse;
+            try
+            {
+                jsonResponse = JsonConvert.DeserializeObject(gptResponse);
+            }
+            catch (JsonException)
+            {
+                return string.Empty;
+            }
+         
             if (jsonResponse == null)
             {
                 return string.Empty;
@@ -40,10 +49,18 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api
                 return string.Empty;
             }
 
-            var responseData = JsonSerializer.Deserialize<GptResponse>(gptResponse);
-            var messageContent = responseData.Choices[0].Message.Content;
-            var htmlResponse = ParseAiMarkdownResponse(messageContent);
-            return htmlResponse;
+            dynamic responseData;
+            try
+            {
+                responseData = JsonSerializer.Deserialize<GptResponse>(gptResponse);
+                var messageContent = responseData.Choices[0].Message.Content;
+                var htmlResponse = ParseAiMarkdownResponse(messageContent);
+                return htmlResponse;
+            }
+            catch (Exception)
+            {
+                return gptResponse;
+            }
         }
 
         private async Task<string> GetUrlFromFunctionResult(dynamic choice)

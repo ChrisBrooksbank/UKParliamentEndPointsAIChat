@@ -39,6 +39,8 @@
                 "Get oral question times for questions tabled in november 2024",
                 "Get list of constituencys",
                 "Get election results for constituency 4359",
+                "Get commons voting record for member 4129",
+                "Get lords voting for member 3743"
             };
             var random = new Random();
             return items.OrderBy(x => random.Next()).ToList();
