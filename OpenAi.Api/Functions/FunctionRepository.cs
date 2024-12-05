@@ -224,7 +224,19 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions
                     .SetApiUrl("https://members-api.parliament.uk/api/Location/Constituency/{constituencyid}/ElectionResults")
                     .Build(),
 
-
+                    FunctionBuilder.Create()
+                        .SetName("get_commons_voting_record_for_member")
+                        .SetDescription("get commons voting i.e. division results for member")                 
+                        .AddParam("queryParameters.memberId", OpenApiParameterType.Integer, "id of member to fetching voting i.e. divisions record for", isRequired: true)                   
+                        .SetApiUrl("https://commonsvotes-api.parliament.uk/data/divisions.json/membervoting?queryParameters.memberId={queryParameters.memberId}")
+                        .Build(),
+                    
+                    FunctionBuilder.Create()
+                        .SetName("get_lords_voting_record_for_member")
+                        .SetDescription("get lords voting i.e. division results for member")                 
+                        .AddParam("MemberId", OpenApiParameterType.Integer, "id of peer to fetching voting i.e. divisions record for", isRequired: true)                   
+                        .SetApiUrl("https://lordsvotes-api.parliament.uk/data/Divisions/membervoting?MemberId={MemberId}")
+                        .Build()
             };
         }
 
