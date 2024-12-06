@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using UKParliamentEndPointsAIChat.Ui.Models;
 using UKParliamentEndPointsAIChat.Ui.OpenAi.Api;
@@ -13,9 +14,9 @@ namespace UKParliamentEndPointsAIChat.Ui.Controllers
         private readonly IGptResponseParser _gptResponseParser;
         private readonly IExampleRepository _exampleRepository;
 
-        public HomeController()
+        public HomeController(IOptions<Config> configOption)
         {
-            _openAiService = new OpenAIService();
+            _openAiService = new OpenAIService(configOption);
             _gptResponseParser = new GptResponseParser();
             _apihttpClient = new HttpClient();
             _exampleRepository = new ExampleRepository();

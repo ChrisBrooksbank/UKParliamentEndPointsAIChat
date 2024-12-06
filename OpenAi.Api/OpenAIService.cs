@@ -1,49 +1,28 @@
 ﻿using System.Net;
 using OpenAI.Chat;
-using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions;
+using Microsoft.Extensions.Options;
+using UKParliamentEndPointsAIChat.Ui.Models;
 
 namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api
 {
     public class OpenAIService : IOpenAiService
     {
         private IFunctionRepository _functionRepository;
-
-        private readonly string _coachAndFocusLLMApiKey;
-        private readonly string _coachAndFocusLLMEndpoint;
-
-        private const double AITemperature = 0.7;
-        private const double AITop_p = 0.95;
-        private const int AIMaxTokens = 4000;
-        private const bool AIUseStream = false;
-
+        private readonly Config _config;
+        
         private readonly HttpClient _llmHttpClient;
-
-        private const string SYSTEM_PROMPT =
-            "You are a helpful, friendly, very smart AI assistant that helps people find information on UK parliament. " +
-            "You will only find information relevant to UK parliament. " +
-            "Any questions in other fields will yield a response saying you are only for UK Parliament data." +
-            "https://www.parliament.uk/ is the primary source of data and whenever possible you should return a link to this site. " +
-            "Only return a link if its a real link that returns a 200 when a GET request is issued. " +
-            "Its vital you check any links are real links that return 200.  " +
-            "You should return any useful API links. You must look at webpage https://developer.parliament.uk/";
-
-        public OpenAIService()
+        
+        public OpenAIService(IOptions<Config> configOption)
         {
-            var useApi = false; // TODO Im overdue config here !
+            _config = configOption.Value;
 
-            var apiKey = useApi ? "CoachAndFocusLLMApiKey2" : "CoachAndFocusLLMApiKey";
-            var endpoint = useApi ? "CoachAndFocusLLMEndpoint2" : "CoachAndFocusLLMEndpoint";
-
-            _coachAndFocusLLMApiKey = Environment.GetEnvironmentVariable(apiKey);
-            _coachAndFocusLLMEndpoint = Environment.GetEnvironmentVariable(endpoint);
-            
             _functionRepository = new FunctionRepository();
             _llmHttpClient = new HttpClient();
 
-            SetAuthorizationHeader(useApi);
+            SetAuthorizationHeader();
         }
 
         public async Task<string> SendMessageAsync(string message, bool useApi = false)
@@ -71,7 +50,7 @@ async Task<string> SendMessageAsyncAzure(string message)
                 new
                 {
                     role = "system",
-                    content = new object[] {new {type = "text", text = SYSTEM_PROMPT}}
+                    content = new object[] {new {type = "text", text = _config.SystemPrompt}}
                 }
             };
             messages.Add(new
@@ -93,7 +72,7 @@ async Task<string> SendMessageAsyncAzure(string message)
 
             try
             {
-                var response = await _llmHttpClient.PostAsync(_coachAndFocusLLMEndpoint, content);
+                var response = await _llmHttpClient.PostAsync(_config.CoachAndFocusLLMEndpoint, content);
                 response.EnsureSuccessStatusCode();
                 var responseContent = await response.Content.ReadAsStringAsync();
                 return responseContent;
@@ -104,18 +83,18 @@ async Task<string> SendMessageAsyncAzure(string message)
             }
         }
 
-        private void SetAuthorizationHeader(bool useApi)
+        private void SetAuthorizationHeader()
         {
             _llmHttpClient.DefaultRequestHeaders.Remove("Authorization");
             _llmHttpClient.DefaultRequestHeaders.Remove("api-key");
 
-            if (useApi)
+            if (_config.UseAzureHostedLlm)
             {
-                _llmHttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_coachAndFocusLLMApiKey}");
+                _llmHttpClient.DefaultRequestHeaders.Add("api-key", _config.CoachAndFocusLLMApiKey);
             }
             else
             {
-                _llmHttpClient.DefaultRequestHeaders.Add("api-key", _coachAndFocusLLMApiKey);
+                _llmHttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_config.CoachAndFocusLLMApiKey2}");
             }
         }
 
@@ -124,10 +103,10 @@ async Task<string> SendMessageAsyncAzure(string message)
             var payload = new
             {
                 messages = messages,
-                temperature = AITemperature,
-                top_p = AITop_p,
-                max_tokens = AIMaxTokens,
-                stream = AIUseStream,
+                temperature = _config.AITemperature,
+                top_p = _config.AITop_p,
+                max_tokens = _config.AIMaxTokens,
+                stream = _config.AIUseStream,
                 functions = functions,
                 function_call = functions != null ? "auto" : null
             };
