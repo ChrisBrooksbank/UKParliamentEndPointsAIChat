@@ -234,9 +234,18 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions
                     FunctionBuilder.Create()
                         .SetName("get_lords_voting_record_for_member")
                         .SetDescription("get lords voting i.e. division results for member")                 
-                        .AddParam("MemberId", OpenApiParameterType.Integer, "id of peer to fetching voting i.e. divisions record for", isRequired: true)                   
+                        .AddParam("MemberId", OpenApiParameterType.Integer, "id of member to fetching voting i.e. divisions record for", isRequired: true)                   
                         .SetApiUrl("https://lordsvotes-api.parliament.uk/data/Divisions/membervoting?MemberId={MemberId}")
+                        .Build(),
+
+                    FunctionBuilder.Create()
+                        .SetName("get_lords_interests_staff")
+                        .SetDescription("get lords interests staff")                 
+                        .AddParam("searchterm", OpenApiParameterType.String, "search term", isRequired: false)                   
+                        .SetApiUrl("https://members-api.parliament.uk/api/LordsInterests/Staff?searchTerm=richard")
                         .Build()
+
+                    
             };
         }
 
