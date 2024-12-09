@@ -243,7 +243,14 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions
                         .SetDescription("get lords interests staff")                 
                         .AddParam("searchterm", OpenApiParameterType.String, "search term", isRequired: false)                   
                         .SetApiUrl("https://members-api.parliament.uk/api/LordsInterests/Staff?searchTerm=richard")
-                        .Build()
+                        .Build(),
+
+                    FunctionBuilder.Create()
+                        .SetName("search_acts_of_parliament")
+                        .SetDescription("search acts of parliament")                 
+                        .AddParam("name", OpenApiParameterType.String, "Name", isRequired: true)                   
+                        .SetApiUrl("https://statutoryinstruments-api.parliament.uk/api/v2/ActOfParliament?Name={name}")
+                        .Build(),
 
                     
             };

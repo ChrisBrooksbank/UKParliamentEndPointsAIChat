@@ -41,7 +41,8 @@
                 "Get election results for constituency 4359",
                 "Get commons voting record for member 4129",
                 "Get lords voting for member 3743",
-                "Get lords interests staff"
+                "Get lords interests staff",
+                "Search acts of parliament for Road"
             };
             var random = new Random();
             return items.OrderBy(x => random.Next()).ToList();
