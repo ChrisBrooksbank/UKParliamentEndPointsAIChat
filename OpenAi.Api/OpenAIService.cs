@@ -79,7 +79,7 @@ async Task<string> SendMessageAsyncAzure(string message)
             }
             catch (HttpRequestException ex) when (ex.StatusCode == (HttpStatusCode)429)
             {
-                return "Rate limit reached for requests to Open AI. Try again later.";
+                return "Rate limit reached for requests to Open AI. Try again in sixty seconds.";
             }
         }
 
