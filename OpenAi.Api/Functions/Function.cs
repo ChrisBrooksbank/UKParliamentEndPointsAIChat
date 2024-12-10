@@ -10,6 +10,9 @@ namespace UKParliamentEndPointsAIChat.Ui.OpenAi.Api.Functions
         [JsonPropertyName("description")]
         public string Description { get; set; }
 
+        [JsonIgnore]
+        public string Hint { get; set; }
+
         [JsonPropertyName("parameters")]
         public FunctionParameters Parameters { get; set; }
 

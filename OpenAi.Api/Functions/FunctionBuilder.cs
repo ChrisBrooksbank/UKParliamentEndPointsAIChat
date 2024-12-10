@@ -39,6 +39,12 @@ public class FunctionBuilder: IFunctionBuilder
         return this;
     }
 
+    public FunctionBuilder SetHint(string hint)
+    {
+        _function.Hint = hint;
+        return this;
+    }
+
     public FunctionBuilder AddParam(string paramName, OpenApiParameterType type, string description, bool isRequired = false)
     {
         _hasParameters = true;

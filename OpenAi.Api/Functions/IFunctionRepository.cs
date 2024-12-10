@@ -2,7 +2,7 @@
 {
     public interface IFunctionRepository
     {
-        Function[] GetAll();
+        Function[] GetAll(string forQuery = null);
         Function[] GetByName(string name);
     }
 }
