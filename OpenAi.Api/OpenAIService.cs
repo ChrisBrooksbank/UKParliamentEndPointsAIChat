@@ -64,7 +64,7 @@ async Task<string> SendMessageAsyncAzure(string message)
                 }
             });
 
-            var functions = _functionRepository.GetAll();
+            var functions = _functionRepository.GetAll(message);
             var payLoad = GetPayLoad(messages, functions);
             var payLoadJson = JsonSerializer.Serialize(payLoad);
 
